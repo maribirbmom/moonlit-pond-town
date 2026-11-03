@@ -1,7 +1,7 @@
 import type { BuildingArtKey } from "./assets";
 
 export const WORLD_W = 1100;
-export const WORLD_H = 820;
+export const WORLD_H = 1200;
 export const TILE = 16;
 
 export type ShopId =
@@ -67,15 +67,19 @@ export const PATHS: { pts: [number, number][]; r: number }[] = [
   { pts: [[895, 790], [895, RING.b]], r: 13 },
   { pts: [[560, 512], [560, 480]], r: 10 },
   { pts: [[560, 512], [560, RING.b]], r: 11 },
+  // south lane + shore access (gap between cafe and cake leads down to the pond)
+  { pts: [[40, 838], [1060, 838]], r: 12 },
+  { pts: [[347, RING.b], [347, 838]], r: 10 },
+  { pts: [[98, 795], [98, 838]], r: 10 },
+  { pts: [[302, 790], [302, 838]], r: 9 },
+  { pts: [[426, 795], [426, 838]], r: 9 },
+  { pts: [[895, 790], [895, 838]], r: 10 },
+  { pts: [[600, 838], [600, 884]], r: 10 },
+  { pts: [[233, 838], [233, 886]], r: 10 },
 ];
 
 export interface Decor { kind: "lamp" | "bench" | "log" | "sign"; x: number; y: number; label?: string }
-export const DECOR: Decor[] = [
-  { kind: "lamp", x: 236, y: 296 }, { kind: "lamp", x: 924, y: 296 }, { kind: "lamp", x: 236, y: 566 }, { kind: "lamp", x: 924, y: 566 },
-  { kind: "lamp", x: 430, y: 296 }, { kind: "lamp", x: 740, y: 296 }, { kind: "lamp", x: 470, y: 566 }, { kind: "lamp", x: 800, y: 566 },
-  { kind: "bench", x: 380, y: 300 }, { kind: "bench", x: 700, y: 300 }, { kind: "bench", x: 840, y: 420 }, { kind: "bench", x: 300, y: 430 },
-  { kind: "log", x: 820, y: 520 }, { kind: "log", x: 270, y: 520 }, { kind: "log", x: 990, y: 650 },
-];
+export const DECOR: Decor[] = [];
 
 function distToSeg(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
   const dx = bx - ax, dy = by - ay;
