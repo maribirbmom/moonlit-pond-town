@@ -14,13 +14,209 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_sprite_index: number | null
+          created_at: string
+          display_name: string | null
+          id: string
+        }
+        Insert: {
+          avatar_sprite_index?: number | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+        }
+        Update: {
+          avatar_sprite_index?: number | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      session_members: {
+        Row: {
+          display_name: string | null
+          joined_at: string
+          role: string
+          session_id: string
+          sprite_index: number | null
+          user_id: string
+        }
+        Insert: {
+          display_name?: string | null
+          joined_at?: string
+          role?: string
+          session_id: string
+          sprite_index?: number | null
+          user_id: string
+        }
+        Update: {
+          display_name?: string | null
+          joined_at?: string
+          role?: string
+          session_id?: string
+          sprite_index?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_members_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          clock_epoch: string
+          created_at: string
+          created_by: string
+          id: string
+          invite_code: string
+          level: number
+          mode: string
+          name: string
+          updated_at: string
+          world_state: Json
+          xp: number
+        }
+        Insert: {
+          clock_epoch?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          invite_code?: string
+          level?: number
+          mode?: string
+          name?: string
+          updated_at?: string
+          world_state?: Json
+          xp?: number
+        }
+        Update: {
+          clock_epoch?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          invite_code?: string
+          level?: number
+          mode?: string
+          name?: string
+          updated_at?: string
+          world_state?: Json
+          xp?: number
+        }
+        Relationships: []
+      }
+      xp_events: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          session_id: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          session_id: string
+          source: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          session_id?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xp_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_xp: {
+        Args: {
+          _amount: number
+          _cooldown_s?: number
+          _sid: string
+          _source: string
+        }
+        Returns: Json
+      }
+      create_session: {
+        Args: {
+          _display: string
+          _mode: string
+          _name: string
+          _sprite: number
+        }
+        Returns: {
+          clock_epoch: string
+          created_at: string
+          created_by: string
+          id: string
+          invite_code: string
+          level: number
+          mode: string
+          name: string
+          updated_at: string
+          world_state: Json
+          xp: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      is_member: { Args: { _sid: string }; Returns: boolean }
+      join_session: {
+        Args: { _code: string; _display: string; _sprite: number }
+        Returns: {
+          clock_epoch: string
+          created_at: string
+          created_by: string
+          id: string
+          invite_code: string
+          level: number
+          mode: string
+          name: string
+          updated_at: string
+          world_state: Json
+          xp: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "sessions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      level_for_xp: { Args: { _xp: number }; Returns: number }
+      record_catch: {
+        Args: { _catch: Json; _sid: string; _xp: number }
+        Returns: Json
+      }
+      save_player: { Args: { _pos: Json; _sid: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
