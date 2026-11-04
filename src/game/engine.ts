@@ -6,13 +6,15 @@ import { SPRITES, type SpriteKey } from "./config/sprites";
 import { FIREFLIES, GLOW_BUSH_COUNT, GLOW_COLORS, SCATTER_COUNTS, SCENERY, SPECIAL_TREES, type SceneryDef } from "./config/scenery";
 import { BENCHES, BOAT, BOAT_GROUP, DOCK, FISH_GROUP, LAMPS, LANE_Y, PIER, PROMPTS, SEAT_GROUPS, SHORE_Y, shoreY, type SeatGroup } from "./config/world";
 import { lightingAt } from "./config/time";
+import { drawAvatar, preloadAvatars } from "./avatar";
+import type { Avatar } from "./config/items";
 
 interface Rect { x: number; y: number; w: number; h: number }
 interface Placed { def: SceneryDef | null; sprite: SpriteKey | string; x: number; y: number; w: number; glow?: string | undefined; phase: number; lanterns?: boolean | undefined }
 interface Lamp { x: number; y: number; on: number; th: number; ph: number }
 export interface PlayerState { x: number; y: number; dir: Dir }
 export interface FishVis { x: number; y: number; phase: string; t: number }
-export interface RemoteState { id: string; name: string; sprite: number; x: number; y: number; dir: Dir; seat: string | null; fish: FishVis | null; moving: boolean; rx: number; ry: number; seen: number }
+export interface RemoteState { id: string; name: string; sprite: number; x: number; y: number; dir: Dir; seat: string | null; fish: FishVis | null; moving: boolean; rx: number; ry: number; seen: number; avatar?: Avatar | undefined }
 export type Nearby =
   | { kind: "npc"; npc: NpcDef }
   | { kind: "gate" }
@@ -72,6 +74,7 @@ export class GameEngine {
   fish: FishVis | null = null;
   remotes = new Map<string, RemoteState>();
   minutes = 480;
+  avatar: Avatar | null = null;
   get night() { return lightingAt(this.minutes).night; }
 
   constructor(
@@ -88,6 +91,7 @@ export class GameEngine {
   }
 
   async start() {
+    await preloadAvatars();
     const srcs = [...Object.values(BUILDING_ART), ...TREE_ART, ...Object.values(SPRITES)];
     const loaded = await Promise.all(srcs.map(loadImg));
     srcs.forEach((s, i) => this.imgs.set(s, loaded[i]!));
@@ -408,7 +412,8 @@ export class GameEngine {
   /** Sit on the first free seat of the group, or stand up if already seated. */
   toggleSeat(group?: SeatGroup) {
     if (this.seat) {
-      const g = groupOfSeat(this.seat)!;
+      const g = groupOfSeat(this.seat);
+      if (!g) { this.seat = null; return; }
       this.seat = null;
       this.player.x = g.exit.x; this.player.y = g.exit.y; this.player.dir = "down";
       this.opts.onSeat?.(null, null);
@@ -467,7 +472,7 @@ export class GameEngine {
     const mineG = groupOfSeat(this.seat);
     for (const r of this.remotes.values()) {
       const g = groupOfSeat(r.seat);
-      if (g && mineG && g.id === mineG.id) {
+      if (g && mineG && g.id === mineG.id && g.kind !== "fish" && r.seat !== this.seat) {
         if (!this.pairNotified.has(g.id)) { this.pairNotified.add(g.id); this.hearts.set(g.id, this.t); this.opts.onPairSeated?.(g); }
       } else if (mineG) this.pairNotified.delete(mineG.id);
     }
@@ -593,10 +598,10 @@ export class GameEngine {
     const seatY = (seat: string | null, y: number) => (groupOfSeat(seat)?.kind === "boat" ? y + boatBob : y);
     for (const r of this.remotes.values()) {
       const y = seatY(r.seat, r.ry);
-      list.push({ y: r.seat ? r.ry + 1 : r.ry, draw: () => drawCharacter(ctx, r.sprite, r.rx, y, r.dir, r.moving ? Math.floor(this.t * 7) % 2 + 1 : 0) });
+      list.push({ y: r.seat ? r.ry + 1 : r.ry, draw: () => r.avatar ? drawAvatar(ctx, r.avatar, r.rx, y, r.dir, r.moving ? Math.floor(this.t * 7) % 2 + 1 : 0) : drawCharacter(ctx, r.sprite, r.rx, y, r.dir, r.moving ? Math.floor(this.t * 7) % 2 + 1 : 0) });
     }
     const frame = this.moving ? Math.floor(this.walkT * 7) % 2 + 1 : 0;
-    list.push({ y: this.seat ? this.player.y + 1 : this.player.y, draw: () => drawCharacter(ctx, this.opts.sprite, this.player.x, seatY(this.seat, this.player.y), this.player.dir, frame) });
+    list.push({ y: this.seat ? this.player.y + 1 : this.player.y, draw: () => this.avatar ? drawAvatar(ctx, this.avatar, this.player.x, seatY(this.seat, this.player.y), this.player.dir, frame) : drawCharacter(ctx, this.opts.sprite, this.player.x, seatY(this.seat, this.player.y), this.player.dir, frame) });
     list.sort((a, b) => a.y - b.y);
     for (const it of list) it.draw();
 
