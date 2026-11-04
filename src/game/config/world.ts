@@ -33,11 +33,13 @@ export const shoreY = (x: number) => SHORE_Y + 6 * Math.sin(x / 37) + 3 * Math.s
 /** Walkable wooden planks over the water */
 export const DOCK = { x: 592, y: 880, w: 16, h: 98 };
 export const PIER = { x: 212, y: 884, w: 42, h: 46 };
-export const BOAT = { x: 600, y: 996, w: 64 };
+export const BOAT = { x: 600, y: 996, w: 96 };
+/** Seated players stand on the deck, this far above the boat anchor. */
+const BOAT_DECK = 14;
 
 export const BOAT_GROUP: SeatGroup = {
   id: "boat", kind: "boat", x: 600, y: DOCK.y + DOCK.h - 4,
-  seats: [{ x: 590, y: 996 }, { x: 610, y: 996 }],
+  seats: [{ x: 586, y: BOAT.y - BOAT_DECK }, { x: 614, y: BOAT.y - BOAT_DECK }],
   exit: { x: 600, y: DOCK.y + DOCK.h - 8 },
 };
 export const FISH_GROUP: SeatGroup = {

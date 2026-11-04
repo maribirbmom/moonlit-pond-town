@@ -576,7 +576,7 @@ export class GameEngine {
     const boatBob = Math.sin(this.t * 1.6) * 1.2;
     if (vis(BOAT.x, BOAT.y)) {
       const img = this.imgs.get(SPRITES.boat_0);
-      if (img?.width) list.push({ y: BOAT.y - 4, draw: () => {
+      if (img?.width) list.push({ y: BOAT.y - 40, draw: () => {
         const h = this.spriteH(SPRITES.boat_0, BOAT.w);
         ctx.fillStyle = "rgba(30,60,90,0.22)"; ctx.beginPath(); ctx.ellipse(BOAT.x, BOAT.y + 4, BOAT.w * 0.45, 5, 0, 0, Math.PI * 2); ctx.fill();
         ctx.imageSmoothingEnabled = true; ctx.drawImage(img, BOAT.x - BOAT.w / 2, BOAT.y - h + 6 + boatBob, BOAT.w, h); ctx.imageSmoothingEnabled = false;
