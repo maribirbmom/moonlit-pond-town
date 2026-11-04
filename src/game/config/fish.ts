@@ -48,5 +48,5 @@ export const FISHING = {
   castMin: 22, castMax: 110,
   chargeSpeed: 0.85,
   /** reel minigame */
-  zoneSize: 0.3, markerGravity: 2.2, markerLift: 4.4, fillRate: 0.42, drainRate: 0.2,
+  zoneSize: 0.3, markerGravity: 1.7, markerLift: 2.4, fillRate: 0.42, drainRate: 0.2,
 } as const;
