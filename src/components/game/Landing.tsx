@@ -14,7 +14,7 @@ export function Landing({ onPlay, signInOnly = false }: { onPlay?: () => void; s
   const [ratio, setRatio] = useState<{ w: number; h: number } | null>(null);
   const play = () => { void preloadAvatars(); onPlay?.(); };
   useEffect(() => { if(signInOnly) return; const key=(e:KeyboardEvent)=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();play();}};window.addEventListener("keydown",key);return()=>window.removeEventListener("keydown",key); },[signInOnly,onPlay]);
-  const signIn = async (provider: "google" | "lovable") => {
+  const signIn = async (provider: "google") => {
     setBusy(true);
     setErr(null);
     window.sessionStorage.setItem("family-town-play", "1");
@@ -27,7 +27,7 @@ export function Landing({ onPlay, signInOnly = false }: { onPlay?: () => void; s
       <div className="w-full max-w-xl overflow-hidden" style={{ aspectRatio: ratio ? `${ratio.w} / ${ratio.h * (1 - LOGO_PLAY_CROP_PERCENT / 100)}` : undefined }}>
         <img src={logo.url} alt="Family Town" onLoad={(e) => setRatio({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} className="pixelated h-full w-full object-cover object-top" />
       </div>
-      {!signInOnly ? <button type="button" onClick={play} className="play-btn mt-4"><span aria-hidden className="play-btn-star">✦</span>Play<span aria-hidden className="play-btn-star">✦</span></button> : <div className="mt-6 flex w-full max-w-xs flex-col gap-3"><Button variant="pixel" size="lg" disabled={busy} onClick={()=>signIn("google")}>{busy?"Opening…":"Continue with Google"}</Button><Button className="lovable-auth-button" disabled={busy} onClick={()=>signIn("lovable")}>Continue with Lovable</Button></div>}
+      {!signInOnly ? <button type="button" onClick={play} className="play-btn mt-4"><span aria-hidden className="play-btn-star">✦</span>Play<span aria-hidden className="play-btn-star">✦</span></button> : <div className="mt-6 flex w-full max-w-xs flex-col gap-3"><Button variant="pixel" size="lg" disabled={busy} onClick={()=>signIn("google")}>{busy?"Opening…":"Continue with Google"}</Button></div>}
       {err && <p className="mt-4 text-destructive">{err}</p>}
     </main>
   );
