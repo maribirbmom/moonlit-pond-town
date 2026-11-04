@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { lovable } from "@/integrations/lovable/index";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/family-town-title.png";
 import { preloadAvatars } from "@/game/avatar";
-import "@lovable.dev/cloud-auth-js/styles.css";
 
 export function Landing({ onPlay, signInOnly = false }: { onPlay?: () => void; signInOnly?: boolean }) {
   const [err, setErr] = useState<string | null>(null);
@@ -14,7 +13,7 @@ export function Landing({ onPlay, signInOnly = false }: { onPlay?: () => void; s
     setBusy(true);
     setErr(null);
     window.sessionStorage.setItem("family-town-play", "1");
-    const res = await lovable.auth.signInWithOAuth(provider, { redirect_uri: window.location.origin });
+    const res = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: window.location.origin } });
     if (res.error) setErr("Couldn't sign in. Please try again.");
     setBusy(false);
   };

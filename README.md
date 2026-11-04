@@ -43,23 +43,10 @@ Add a pond, boat and fishing.
 
 - Keep everything in config files so I can add fish, items and minigames later.
 
-This project was built with [Lovable](https://lovable.dev).
+## Setup
 
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/696997d3-ef8c-48e2-b4dc-aeff91d2ad6f).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+1. **Supabase** - create a free project at supabase.com. In *SQL Editor* paste and run `supabase/setup.sql`.
+   In *Authentication -> Providers* enable **Google** (create an OAuth client in Google Cloud Console; the redirect URL to allow is shown on that page). In *Authentication -> URL Configuration* add your site URL and `http://localhost:5173`.
+2. **Env** - copy `.env.example` to `.env` and fill in the keys from *Project Settings -> API*.
+3. **Run** - `bun install && bun run dev`.
+4. **Deploy** - import the repo into Vercel, add the same env vars, deploy.

@@ -1,40 +1,40 @@
 /**
  * Single source of truth for every piece of art in the game.
- * Swap an image here (or upload a new .asset.json pointer) without touching game logic.
+ * Swap an image here without touching game logic.
  */
-import bakery from "@/assets/game/bakery.png.asset.json";
-import busstop from "@/assets/game/busstop.png.asset.json";
-import cafe from "@/assets/game/cafe.png.asset.json";
-import cake from "@/assets/game/cake.png.asset.json";
-import flower from "@/assets/game/flower.png.asset.json";
-import gameroom from "@/assets/game/gameroom.png.asset.json";
-import home from "@/assets/game/home.png.asset.json";
-import petdecor from "@/assets/game/petdecor.png.asset.json";
-import pub from "@/assets/game/pub.png.asset.json";
-import seedshop from "@/assets/game/seedshop.png.asset.json";
-import tree0 from "@/assets/game/tree0.png.asset.json";
-import tree1 from "@/assets/game/tree1.png.asset.json";
-import tree2 from "@/assets/game/tree2.png.asset.json";
-import tree3 from "@/assets/game/tree3.png.asset.json";
-import tree4 from "@/assets/game/tree4.png.asset.json";
-import tree5 from "@/assets/game/tree5.png.asset.json";
+import bakery from "@/assets/game/bakery.png";
+import busstop from "@/assets/game/busstop.png";
+import cafe from "@/assets/game/cafe.png";
+import cake from "@/assets/game/cake.png";
+import flower from "@/assets/game/flower.png";
+import gameroom from "@/assets/game/gameroom.png";
+import home from "@/assets/game/home.png";
+import petdecor from "@/assets/game/petdecor.png";
+import pub from "@/assets/game/pub.png";
+import seedshop from "@/assets/game/seedshop.png";
+import tree0 from "@/assets/game/tree0.png";
+import tree1 from "@/assets/game/tree1.png";
+import tree2 from "@/assets/game/tree2.png";
+import tree3 from "@/assets/game/tree3.png";
+import tree4 from "@/assets/game/tree4.png";
+import tree5 from "@/assets/game/tree5.png";
 
 export const BUILDING_ART = {
-  salon: bakery.url, // placeholder until the tailor sprite is uploaded
-  flower: flower.url,
-  bar: pub.url,
-  cafe: cafe.url,
-  cake: cake.url,
-  home: home.url,
-  petdecor: petdecor.url,
-  gameroom: gameroom.url,
-  busstop: busstop.url,
-  seedshop: seedshop.url,
+  salon: bakery, // placeholder until the tailor sprite is uploaded
+  flower: flower,
+  bar: pub,
+  cafe: cafe,
+  cake: cake,
+  home: home,
+  petdecor: petdecor,
+  gameroom: gameroom,
+  busstop: busstop,
+  seedshop: seedshop,
 } as const;
 export type BuildingArtKey = keyof typeof BUILDING_ART;
 
 /** 0-2 autumn, 3-5 green */
-export const TREE_ART = [tree0.url, tree1.url, tree2.url, tree3.url, tree4.url, tree5.url];
+export const TREE_ART = [tree0, tree1, tree2, tree3, tree4, tree5];
 
 /**
  * Character sheet. Set `image` to a sprite-sheet URL (7 cols x 7 rows) to slice real art.
