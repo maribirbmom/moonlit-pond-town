@@ -1,173 +1,106 @@
 import { useEffect, useRef, useState } from "react";
-import { GameEngine, type Nearby } from "@/game/engine";
-import { SPAWN } from "@/game/map";
+import { Grid2X2, UserRound, Save, Settings, LogOut, ArrowLeft, X, HelpCircle, Fish, Users, Copy, Volume2, VolumeX, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { GameEngine, groupOfSeat, type Nearby, type RemoteState } from "@/game/engine";
+import { BUILDINGS, SPAWN } from "@/game/map";
 import type { NpcDef } from "@/game/npcs";
-import { loadSave, writeSave } from "@/game/save";
+import { FishingSim, type Catch } from "@/game/fishing";
+import { FISH, FISHING, RARITY_XP } from "@/game/config/fish";
+import { formatClock, gameClock, phaseOf } from "@/game/config/time";
+import { ALL_BUILDINGS_XP, VISIT_IDS, VISIT_XP, weatherAt, shopOpen, LEVEL_UNLOCKS } from "@/game/config/activities";
+import { ONCE, XP_REWARDS, xpForLevel } from "@/game/config/xp";
+import { parseAvatar, type Avatar } from "@/game/config/items";
+import { asJson, reward, savePosition, worldOf, type TownSession } from "@/game/session";
 import { supabase } from "@/integrations/supabase/client";
+import { AvatarPreview } from "./AvatarPreview";
+import { AvatarEditor } from "./AvatarEditor";
 import { SpriteThumb } from "./SpriteThumb";
 
-const KEYMAP: Record<string, string> = { ArrowUp: "up", w: "up", W: "up", ArrowDown: "down", s: "down", S: "down", ArrowLeft: "left", a: "left", A: "left", ArrowRight: "right", d: "right", D: "right" };
+const KEYMAP: Record<string,string>={ArrowUp:"up",w:"up",W:"up",ArrowDown:"down",s:"down",S:"down",ArrowLeft:"left",a:"left",A:"left",ArrowRight:"right",d:"right",D:"right"};
+type FishingHud = {phase:string;power:number;marker:number;zone:number;progress:number;result:Catch|null};
+const EMPTY_FISH: FishingHud={phase:"idle",power:0,marker:.5,zone:.4,progress:0,result:null};
 
-export function GameView({ userId, name, sprite }: { userId: string; name: string; sprite: number }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const engineRef = useRef<GameEngine | null>(null);
-  const [nearby, setNearby] = useState<Nearby>(null);
-  const [dialog, setDialog] = useState<{ npc: NpcDef; line: number; shown: number } | null>(null);
-  const [pointers, setPointers] = useState(true);
-  const [menu, setMenu] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const nearbyRef = useRef<Nearby>(null);
-  const dialogRef = useRef(dialog);
-  dialogRef.current = dialog;
+export function GameView({userId,name,sprite,avatar,session,onExit,onAvatarSave}:{userId:string;name:string;sprite:number;avatar:Avatar;session:TownSession;onExit:()=>void;onAvatarSave:(a:Avatar,n:string)=>Promise<void>}) {
+  const canvasRef=useRef<HTMLCanvasElement>(null), engineRef=useRef<GameEngine|null>(null), nearbyRef=useRef<Nearby>(null),sim=useRef(new FishingSim()),holding=useRef(false),actionRef=useRef<()=>void>(()=>{}),dialogRef=useRef<{npc:NpcDef;line:number;shown:number}|null>(null), blocked=useRef(false),avatarRef=useRef(avatar),nameRef=useRef(name);
+  const [nearby,setNearby]=useState<Nearby>(null),[dialog,setDialog]=useState<{npc:NpcDef;line:number;shown:number}|null>(null),[seat,setSeat]=useState<string|null>(null),[hud,setHud]=useState<FishingHud>(EMPTY_FISH),[town,setTown]=useState(session),[clock,setClock]=useState({minutes:480,day:1}),[menu,setMenu]=useState(false),[panel,setPanel]=useState<"avatar"|"settings"|"collection"|"invite"|null>(null),[pointers,setPointers]=useState(true),[notice,setNotice]=useState(""),[loading,setLoading]=useState(true),[partner,setPartner]=useState(""),[music,setMusic]=useState(false),[saveBusy,setSaveBusy]=useState(false),[engineError,setEngineError]=useState("");
+  const noticeTimer=useRef<ReturnType<typeof setTimeout>|null>(null),townRef=useRef(town);
+  dialogRef.current=dialog; blocked.current=!!dialog||!!panel||menu; avatarRef.current=avatar;nameRef.current=name;townRef.current=town;
+  const notify=(text:string)=>{setNotice(text);if(noticeTimer.current)clearTimeout(noticeTimer.current);noticeTimer.current=setTimeout(()=>setNotice(""),4000);};
+  const refresh=async()=>{const {data,error}=await supabase.from("sessions").select("*").eq("id",session.id).maybeSingle();if(data)setTown(data);else if(!error){notify("This town is no longer available.");onExit();}};
+  const award=async(source:string,amount:number,cooldown=0)=>{try{const result=await reward(session.id,source,amount,cooldown);if(result&&typeof result==="object"&&!Array.isArray(result)&&result["awarded"])notify(`+${amount} shared XP ✨`);await refresh();}catch{notify("Couldn't save that reward. Try again.");}};
+  const persist=async()=>{const eng=engineRef.current;if(eng)await savePosition(session.id,eng.player);};
+  const manualSave=async()=>{setSaveBusy(true);try{await persist();notify("Town saved ✓");}catch{notify("Couldn't save. Please try again.");}finally{setSaveBusy(false);}};
 
-  useEffect(() => {
-    let eng: GameEngine | null = null;
-    let cancelled = false;
-    (async () => {
-      const save = await loadSave(userId);
-      if (cancelled) return;
-      eng = new GameEngine(canvasRef.current!, {
-        sprite, name,
-        start: save?.player ?? { x: SPAWN.x, y: SPAWN.y, dir: "down" },
-        onNearby: (n) => { nearbyRef.current = n; setNearby(n); },
-      });
-      engineRef.current = eng;
-      if (import.meta.env.DEV) (window as unknown as { __eng: GameEngine }).__eng = eng;
-      await eng.start();
-    })();
-    const persist = () => { const e = engineRef.current; if (e) void writeSave(userId, { version: 1, level: "hub", player: { ...e.player } }); };
-    const iv = setInterval(persist, 10000);
-    window.addEventListener("beforeunload", persist);
-    return () => { cancelled = true; persist(); clearInterval(iv); window.removeEventListener("beforeunload", persist); eng?.stop(); };
-  }, [userId, sprite, name]);
+  useEffect(()=>{
+    let disposed=false, eng:GameEngine|null=null;
+    const canvas=canvasRef.current;if(!canvas)return;
+    const initial=worldOf(session).players?.[userId]??{...SPAWN,dir:"down" as const};
+    eng=new GameEngine(canvas,{sprite,name,start:initial,onNearby:n=>{nearbyRef.current=n;setNearby(n);},onSeat:(s)=>{setSeat(s);sim.current=new FishingSim();holding.current=false;if(eng)eng.fish=null;setHud(EMPTY_FISH);void persist().catch(()=>notify("Couldn't save your position."));},onPairSeated:g=>{void award(`seat:${g.id}`,XP_REWARDS.sitTogether,XP_REWARDS.sitTogetherCooldownS);}});
+    engineRef.current=eng;eng.avatar=avatar;
+    if(import.meta.env.DEV)(window as unknown as {__eng:GameEngine}).__eng=eng;
+    void eng.start().then(()=>{if(disposed)eng?.stop();else setLoading(false);}).catch(()=>setEngineError("Couldn't load the town. Please refresh."));
+    const autosave=setInterval(()=>void persist().catch(()=>notify("Couldn't save. Check your connection.")),20000);
+    const blur=()=>{eng?.clearKeys();holding.current=false;sim.current.release();};
+    window.addEventListener("blur",blur);
+    return()=>{disposed=true;clearInterval(autosave);window.removeEventListener("blur",blur);void persist().catch(()=>{});eng?.stop();engineRef.current=null;if(noticeTimer.current)clearTimeout(noticeTimer.current);};
+  },[session.id,userId]);
+  useEffect(()=>{if(engineRef.current)engineRef.current.avatar=avatar;},[avatar]);
+  useEffect(()=>{if(engineRef.current){engineRef.current.paused=!!dialog||!!panel||menu;if(blocked.current)engineRef.current.clearKeys();}},[dialog,panel,menu]);
 
-  const openNpc = (npc: NpcDef) => { setDialog({ npc, line: 0, shown: 0 }); if (engineRef.current) { engineRef.current.paused = true; engineRef.current.clearKeys(); } };
-  const advance = () => {
-    const d = dialogRef.current;
-    if (!d) return;
-    const full = d.npc.dialogue[d.line]!.length;
-    if (d.shown < full) return setDialog({ ...d, shown: full });
-    if (d.line + 1 < d.npc.dialogue.length) return setDialog({ ...d, line: d.line + 1, shown: 0 });
-    setDialog(null);
-    if (engineRef.current) engineRef.current.paused = false;
-  };
-  const interact = () => {
-    if (dialogRef.current) return advance();
-    const n = nearbyRef.current;
-    if (n?.kind === "npc") openNpc(n.npc);
-  };
-
-  // typewriter
-  useEffect(() => {
-    if (!dialog) return;
-    const full = dialog.npc.dialogue[dialog.line]!.length;
-    if (dialog.shown >= full) return;
-    const t = setTimeout(() => setDialog((d) => (d ? { ...d, shown: d.shown + 1 } : d)), 28);
-    return () => clearTimeout(t);
-  }, [dialog]);
-
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.tagName === "INPUT") return;
-      const k = KEYMAP[e.key];
-      if (k) { e.preventDefault(); if (!dialogRef.current) engineRef.current?.setKey(k, true); }
-      if (e.key === "e" || e.key === "E" || e.key === " " || e.key === "Enter") { e.preventDefault(); interact(); }
-      if (e.key === "p" || e.key === "P" || e.key === "?") togglePointers();
+  // One private member-scoped subscription; polling recovers missed events.
+  useEffect(()=>{
+    let active=true,writing=false;
+    const loadLive=async()=>{const {data}=await supabase.from("player_live").select("*").eq("session_id",session.id);const e=engineRef.current;if(!active||!e)return;const present=new Set<string>();let partnerName="";
+      for(const row of data??[]){if(row.user_id===userId||Date.now()-Date.parse(row.updated_at)>15000)continue;const value=row.state;if(!value||typeof value!=="object"||Array.isArray(value))continue;const s=value as unknown as Partial<RemoteState>&{catch?:Catch};if(typeof s.x!=="number"||typeof s.y!=="number")continue;present.add(row.user_id);partnerName=s.name??"Partner";const old=e.remotes.get(row.user_id);const remote:RemoteState={id:row.user_id,name:s.name??"Partner",sprite:s.sprite??0,x:s.x,y:s.y,dir:s.dir??"down",seat:s.seat??null,fish:s.fish??null,moving:!!s.moving,rx:old?.rx??s.x,ry:old?.ry??s.y,seen:Date.now(),avatar:parseAvatar(s.avatar)??undefined};e.remotes.set(row.user_id,remote);if(s.catch&&old?.fish?.phase!=="caught"&&s.fish?.phase==="caught")notify(`${remote.name} caught a ${s.catch.name}!`);}
+      for(const id of e.remotes.keys())if(!present.has(id))e.remotes.delete(id);setPartner(partnerName);
     };
-    const up = (e: KeyboardEvent) => { const k = KEYMAP[e.key]; if (k) engineRef.current?.setKey(k, false); };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const publish=async()=>{const e=engineRef.current;if(!e||writing||!active)return;writing=true;const {error}=await supabase.from("player_live").upsert({session_id:session.id,user_id:userId,state:asJson({...e.player,name:nameRef.current,sprite,avatar:avatarRef.current,seat:e.seat,fish:e.fish,catch:sim.current.result,moving:false}),updated_at:new Date().toISOString()});writing=false;if(error)console.warn("Live town update unavailable");};
+    const channel=supabase.channel(`town-${session.id}-${Math.random().toString(36).slice(2)}`).on("postgres_changes",{event:"*",schema:"public",table:"player_live",filter:`session_id=eq.${session.id}`},()=>void loadLive()).on("postgres_changes",{event:"UPDATE",schema:"public",table:"sessions",filter:`id=eq.${session.id}`},()=>void refresh()).subscribe();
+    void loadLive();const tick=setInterval(()=>void publish(),500),poll=setInterval(()=>{void loadLive();void refresh();},5000);
+    return()=>{active=false;clearInterval(tick);clearInterval(poll);void supabase.removeChannel(channel);void supabase.from("player_live").delete().eq("session_id",session.id).eq("user_id",userId);};
+  },[session.id,userId]);
 
-  const togglePointers = () => setPointers((p) => { const v = !p; if (engineRef.current) engineRef.current.showPointers = v; return v; });
+  useEffect(()=>{
+    let last=performance.now(),savedResult:Catch|null=null,lastPhase="idle",frame=0;const visits=new Set(worldOf(session).visitedBuildings??[]);
+    const timer=setInterval(()=>{const e=engineRef.current;if(!e)return;const now=performance.now(),dt=Math.min(.1,(now-last)/1000);last=now;const c=gameClock(Date.parse(session.clock_epoch),Date.now(),480);e.minutes=c.minutes;if(++frame%10===0)setClock(c);
+      const fishing=groupOfSeat(e.seat)?.kind==="fish";if(fishing){const f=sim.current;if(!blocked.current)f.update(dt,holding.current);e.fish={x:e.player.x+10,y:e.player.y+f.distance,phase:f.phase,t:f.castT};if(lastPhase==="casting"&&f.phase==="waiting")e.splash(e.fish.x,e.fish.y);if(f.phase==="caught"&&f.result&&savedResult!==f.result){savedResult=f.result;void supabase.rpc("record_catch",{_sid:session.id,_catch:asJson({...f.result,catchId:crypto.randomUUID()}),_xp:RARITY_XP[f.result.rarity]}).then(({error})=>{if(error)notify("Couldn't save your catch.");else{notify(`Caught ${f.result?.name}! +${RARITY_XP[f.result?.rarity??"common"]} XP`);void refresh();void persist();}});}lastPhase=f.phase;setHud({phase:f.phase,power:f.power,marker:f.marker,zone:f.zone,progress:f.progress,result:f.result});}
+      if(!blocked.current&&!e.seat){for(const b of BUILDINGS){if(!VISIT_IDS.includes(b.id)||visits.has(b.id)||Math.hypot(e.player.x-b.door.x,e.player.y-b.door.y)>22)continue;visits.add(b.id);void award(`visit:${b.id}`,VISIT_XP,ONCE).then(()=>{if(visits.size>=10)void award("all-buildings",ALL_BUILDINGS_XP,ONCE);});}}
+    },50);return()=>clearInterval(timer);
+  },[session.id]);
 
-  const onCanvasClick = (e: React.MouseEvent) => {
-    if (dialogRef.current) return advance();
-    const r = (e.target as HTMLElement).getBoundingClientRect();
-    const npc = engineRef.current?.npcAtScreen(e.clientX - r.left, e.clientY - r.top);
-    if (npc) openNpc(npc);
-  };
+  const advance=()=>{const d=dialogRef.current;if(!d)return;const text=d.npc.dialogue[d.line]??"";if(d.shown<text.length)setDialog({...d,shown:text.length});else if(d.line+1<d.npc.dialogue.length)setDialog({...d,line:d.line+1,shown:0});else setDialog(null);};
+  const openNpc=(npc:NpcDef)=>{const e=engineRef.current;if(!e)return;let lines=npc.dialogue;if(phaseOf(e.minutes)==="night")lines=npc.id==="vane"?["...zzz... Vane is fast asleep. Come back in the morning."]:shopOpen(npc.shop,e.minutes)?["The town looks magical under the lanterns, doesn't it?",...npc.dialogue]:["We've closed for the night. See you in the morning!", "The pond is lovely under the moonlight."];setDialog({npc:{...npc,dialogue:lines},line:0,shown:0});e.clearKeys();void award(`npc:${npc.id}`,XP_REWARDS.npcFirstTalk,ONCE);};
+  const interact=()=>{if(panel||menu)return;if(dialogRef.current)return advance();const e=engineRef.current;if(!e)return;if(e.seat){e.toggleSeat();return;}const n=nearbyRef.current;if(n?.kind==="npc")openNpc(n.npc);else if(n?.kind==="seat"){if(n.full)notify("Both seats are taken.");else e.toggleSeat(n.group);}else if(n?.kind==="gate")notify("The gate is locked for now.");};actionRef.current=interact;
+  const fishDown=()=>{if(blocked.current)return;holding.current=true;const e=engineRef.current;sim.current.press(()=>phaseOf(e?.minutes??480));};
+  const fishUp=()=>{holding.current=false;sim.current.release();};
+  useEffect(()=>{if(!dialog)return;const full=(dialog.npc.dialogue[dialog.line]??"").length;if(dialog.shown>=full)return;const t=setTimeout(()=>setDialog(d=>d?{...d,shown:d.shown+1}:d),28);return()=>clearTimeout(t);},[dialog]);
+  useEffect(()=>{const down=(event:KeyboardEvent)=>{if((event.target as HTMLElement)?.matches("input,textarea,select"))return;if(event.key==="Escape"){setPanel(null);setMenu(false);setDialog(null);return;}if(blocked.current&&!dialogRef.current)return;const k=KEYMAP[event.key];if(k){event.preventDefault();if(!blocked.current)engineRef.current?.setKey(k,true);}if(event.key===" "){event.preventDefault();if(event.repeat)return;if(groupOfSeat(engineRef.current?.seat??null)?.kind==="fish"&&!dialogRef.current)fishDown();else actionRef.current();}if((event.key.toLowerCase()==="e"||event.key==="Enter")&&!event.repeat){event.preventDefault();actionRef.current();}if(event.key.toLowerCase()==="p")setPointers(p=>{if(engineRef.current)engineRef.current.showPointers=!p;return !p;});};const up=(event:KeyboardEvent)=>{const k=KEYMAP[event.key];if(k)engineRef.current?.setKey(k,false);if(event.key===" ")fishUp();};window.addEventListener("keydown",down);window.addEventListener("keyup",up);return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);};},[]);
+  // Audio is created only after an explicit play action and stops on leave.
+  useEffect(()=>{if(!music)return;const audio=new AudioContext(),gain=audio.createGain();gain.gain.value=.035;gain.connect(audio.destination);let step=0;const notes=[261.63,329.63,392,329.63,220,293.66,349.23,293.66];const play=()=>{const oscillator=audio.createOscillator(),envelope=audio.createGain();oscillator.type="sine";oscillator.frequency.value=notes[step++%notes.length]??261;envelope.gain.setValueAtTime(0,audio.currentTime);envelope.gain.linearRampToValueAtTime(.5,audio.currentTime+.1);envelope.gain.exponentialRampToValueAtTime(.001,audio.currentTime+1.5);oscillator.connect(envelope);envelope.connect(gain);oscillator.start();oscillator.stop(audio.currentTime+1.6);};play();const t=setInterval(play,650);return()=>{clearInterval(t);void audio.close();};},[music]);
 
-  const dpad = (k: string) => ({
-    onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); engineRef.current?.setKey(k, true); },
-    onPointerUp: () => engineRef.current?.setKey(k, false),
-    onPointerLeave: () => engineRef.current?.setKey(k, false),
-  });
-
-  return (
-    <div className="relative h-screen w-screen overflow-hidden bg-lavender select-none">
-      <canvas ref={canvasRef} onClick={onCanvasClick} className="pixelated absolute inset-0 h-full w-full" />
-      <div className="overlay-tint pointer-events-none absolute inset-0 mix-blend-soft-light" />
-      <div className="vignette pointer-events-none absolute inset-0" />
-
-      {/* top-left title + hint */}
-      <div className="absolute left-3 top-3 flex items-center gap-2">
-        <div className="pixel-panel px-3 py-1 text-lg font-bold">Wedding City</div>
-        <button onClick={togglePointers} className={`pixel-btn h-9 w-9 text-lg font-bold ${pointers ? "" : "opacity-60"}`} aria-label="Toggle location pointers" title="Location pointers (P)">?</button>
-      </div>
-
-      {/* profile */}
-      <div className="absolute right-3 top-3">
-        <button onClick={() => setMenu((m) => !m)} className="pixel-panel flex items-center gap-2 px-2 py-1" aria-label="Profile menu">
-          <SpriteThumb index={sprite} size={1.6} />
-          <span className="max-w-28 truncate font-semibold">{name}</span>
-        </button>
-        {menu && (
-          <div className="pixel-panel absolute right-0 mt-2 w-44 p-2">
-            <p className="px-2 pb-2 text-sm text-muted-foreground">Signed in as <b className="text-foreground">{name}</b></p>
-            <p className="px-2 pb-2 text-xs text-muted-foreground">Auto-saving to slot 1</p>
-            <button onClick={() => supabase.auth.signOut()} className="pixel-btn w-full py-1">Log out</button>
-          </div>
-        )}
-      </div>
-
-      {/* mini player */}
-      <div className="pixel-panel absolute bottom-3 left-3 flex items-center gap-3 px-3 py-2">
-        <button onClick={() => setPlaying((p) => !p)} className="pixel-btn h-8 w-8 text-sm" aria-label={playing ? "Pause" : "Play"}>{playing ? "❚❚" : "▶"}</button>
-        <div>
-          <p className="text-sm font-semibold leading-tight">Petals on the Path</p>
-          <p className="text-xs text-muted-foreground leading-tight">lofi town radio · soon</p>
-        </div>
-        <div className="flex h-3 items-end gap-0.5">
-          {[0, 1, 2, 3].map((i) => <span key={i} className={`w-1 bg-primary ${playing ? "animate-eq" : "h-1"}`} style={{ animationDelay: `${i * 0.15}s` }} />)}
-        </div>
-      </div>
-
-      {/* interaction hint */}
-      {!dialog && nearby && (
-        <div className="pixel-panel absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 text-center">
-          {nearby.kind === "npc" ? <>Press <b>E</b> or tap to talk to <b>{nearby.npc.name}</b></> : <>🔒 Locked gate · <b>Coming soon</b></>}
-        </div>
-      )}
-
-      {/* dialogue */}
-      {dialog && (
-        <div className="absolute inset-x-0 bottom-4 flex justify-center px-3" onClick={advance}>
-          <div className="pixel-panel relative w-full max-w-2xl cursor-pointer p-5 pt-6">
-            <div className="pixel-btn absolute -top-5 left-4 px-3 py-0.5 text-base font-bold">{dialog.npc.name}</div>
-            <div className="flex gap-4">
-              <SpriteThumb index={dialog.npc.sprite} size={3} />
-              <p className="min-h-16 text-lg leading-snug">{dialog.npc.dialogue[dialog.line]!.slice(0, dialog.shown)}</p>
-            </div>
-            <p className="mt-2 text-right text-xs text-muted-foreground">{dialog.line + 1}/{dialog.npc.dialogue.length} · E / tap ▸</p>
-          </div>
-        </div>
-      )}
-
-      {/* mobile d-pad */}
-      <div className="absolute bottom-20 right-4 grid grid-cols-3 gap-1 md:hidden">
-        <span />
-        <button className="pixel-btn h-12 w-12 touch-none" {...dpad("up")}>▲</button>
-        <span />
-        <button className="pixel-btn h-12 w-12 touch-none" {...dpad("left")}>◀</button>
-        <button className="pixel-btn h-12 w-12 touch-none font-bold" onClick={interact}>E</button>
-        <button className="pixel-btn h-12 w-12 touch-none" {...dpad("right")}>▶</button>
-        <span />
-        <button className="pixel-btn h-12 w-12 touch-none" {...dpad("down")}>▼</button>
-        <span />
-      </div>
-    </div>
-  );
+  const dpad=(k:string)=>({onPointerDown:(ev:React.PointerEvent)=>{ev.preventDefault();ev.currentTarget.setPointerCapture(ev.pointerId);if(!blocked.current)engineRef.current?.setKey(k,true);},onPointerUp:()=>engineRef.current?.setKey(k,false),onPointerCancel:()=>engineRef.current?.setKey(k,false)});
+  const fishing=groupOfSeat(seat)?.kind==="fish",weather=weatherAt(clock.day,phaseOf(clock.minutes)),caught=worldOf(town).fishCaught??[],next=xpForLevel(town.level+1),prev=xpForLevel(town.level),progress=Math.min(100,((town.xp-prev)/(next-prev))*100);
+  const fishLabel=hud.phase==="idle"||hud.phase==="caught"||hud.phase==="escaped"?"Cast":hud.phase==="charging"?"Release to cast":hud.phase==="waiting"?"…":hud.phase==="bite"?"! Hook":"Reel";
+  return <main className="relative h-dvh w-screen overflow-hidden bg-lavender select-none">
+    <canvas aria-label="Family Town map" ref={canvasRef} className="pixelated absolute inset-0 h-full w-full" onClick={ev=>{if(blocked.current){if(dialogRef.current)advance();return;}const r=ev.currentTarget.getBoundingClientRect(),n=engineRef.current?.npcAtScreen(ev.clientX-r.left,ev.clientY-r.top);if(n)openNpc(n);}}/>
+    <div className="absolute left-3 top-3 flex max-w-[60%] flex-col items-start gap-2"><div className="pixel-panel px-3 py-1 text-lg font-bold">Family Town</div><div className="pixel-panel flex items-center gap-2 px-3 py-1" aria-label="Town clock"><span title={weather?.label} className="text-xl">{weather?.emoji}</span><span>Day {clock.day} · {formatClock(clock.minutes)}</span></div><div className="pixel-panel w-44 px-3 py-2"><div className="flex justify-between text-xs"><span>Level {town.level}</span><span>{town.xp} / {next} XP</span></div><progress className="mt-1 h-2 w-full accent-primary" max={100} value={progress}/></div></div>
+    <div className="absolute right-3 top-3 flex flex-col items-end gap-2"><Button variant="pixel" className="h-auto bg-card text-foreground px-2" onClick={()=>setMenu(m=>!m)} aria-label="Town menu"><AvatarPreview avatar={avatar}/><span className="max-w-24 truncate">{name}</span><Grid2X2/></Button><div className="flex gap-1"><Button variant="pixel" size="icon" title="Location pointers" aria-label="Toggle location pointers" aria-pressed={pointers} onClick={()=>setPointers(p=>{if(engineRef.current)engineRef.current.showPointers=!p;return !p;})}><HelpCircle/></Button><Button variant="pixel" size="icon" aria-label="Fish collection" title="Fish collection" onClick={()=>setPanel("collection")}><Fish/></Button>{town.mode==="duo"&&<Button variant="pixel" size="icon" aria-label="Invite partner" title="Invite partner" onClick={()=>setPanel("invite")}><Users/></Button>}</div><span className="pixel-panel px-2 py-1 text-xs">{partner?`${partner} is here` : town.mode==="duo"?"Waiting for partner":"Solo town"}</span>
+    {menu&&<div className="pixel-panel grid w-52 grid-cols-2 gap-2 p-3">{[{label:"Avatar",icon:UserRound,fn:()=>setPanel("avatar")},{label:"Save",icon:Save,fn:()=>void manualSave()},{label:"Settings",icon:Settings,fn:()=>setPanel("settings")},{label:"Towns",icon:ArrowLeft,fn:()=>void persist().then(onExit).catch(()=>notify("Save failed. Try again."))},{label:"Log out",icon:LogOut,fn:()=>void persist().finally(()=>supabase.auth.signOut())}].map(item=><Button key={item.label} variant="ghost" className="h-16 flex-col" onClick={()=>{setMenu(false);item.fn();}}><item.icon/>{item.label}</Button>)}</div>}</div>
+    <div className="pixel-panel absolute bottom-3 left-3 flex items-center gap-2 px-3 py-2"><Button variant="ghost" size="icon" aria-label={music?"Mute town radio":"Play town radio"} onClick={()=>setMusic(p=>!p)}>{music?<Volume2/>:<VolumeX/>}</Button><div><p className="text-sm">Petals on the Path</p><p className="text-xs text-muted-foreground">Town radio</p></div>{saveBusy&&<Save className="size-4 animate-pulse"/>}</div>
+    {notice&&<div role="status" className="pixel-panel absolute left-1/2 top-44 z-20 max-w-[80%] -translate-x-1/2 px-4 py-2 text-center">{notice}</div>}
+    {!dialog&&!panel&&!fishing&&(nearby||seat)&&<div className="absolute bottom-24 left-1/2 -translate-x-1/2"><Button variant="pixel" disabled={nearby?.kind==="seat"&&nearby.full&&!seat} onClick={interact}>{seat?"Stand up":nearby?.kind==="seat"?nearby.full?"Seats taken":nearby.prompt:nearby?.kind==="npc"?`Talk to ${nearby.npc.name}`:"🔒 Coming soon"}<span className="hidden text-xs sm:inline">· E</span></Button></div>}
+    {fishing&&!panel&&!dialog&&<section className="pixel-panel absolute bottom-20 left-1/2 w-[min(360px,calc(100%-24px))] -translate-x-1/2 p-4" aria-label="Fishing"><header className="flex justify-between"><h2 className="text-lg font-bold">🎣 Pond fishing</h2><Button variant="ghost" size="sm" onClick={interact}>Stand up</Button></header>
+    {hud.phase==="charging"&&<progress aria-label="Cast power" className="mt-3 h-4 w-full accent-primary" value={hud.power} max={1}/>}
+    {hud.phase==="reeling"&&<div className="mt-3"><div className="fish-track"><span className="fish-zone" style={{left:`${hud.zone*100}%`,width:`${FISHING.zoneSize*100}%`}}/><span className="fish-marker" style={{left:`${hud.marker*100}%`}}/></div><progress aria-label="Catch progress" className="mt-2 h-2 w-full accent-primary" max={1} value={Math.max(0,hud.progress)}/></div>}
+    {hud.phase==="caught"&&hud.result&&<div className="my-3 text-center"><span className="text-4xl">🐟</span><h3 className="text-xl font-bold">{hud.result.name}</h3><p className="capitalize">{hud.result.rarity} · {hud.result.size} cm · +{RARITY_XP[hud.result.rarity]} XP</p></div>}{hud.phase==="escaped"&&<p className="my-3 text-center">It got away.</p>}
+    <Button variant="pixel" className="mt-3 h-12 w-full touch-none text-lg" onPointerDown={ev=>{ev.preventDefault();ev.currentTarget.setPointerCapture(ev.pointerId);fishDown();}} onPointerUp={fishUp} onPointerCancel={fishUp} disabled={hud.phase==="casting"}>{fishLabel}</Button></section>}
+    {dialog&&<div className="absolute inset-x-0 bottom-4 z-30 flex justify-center px-3"><Button variant="ghost" className="pixel-panel relative h-auto min-h-36 w-full max-w-2xl whitespace-normal p-5 text-left" onClick={advance}><span className="pixel-panel absolute -top-5 left-4 px-3 py-1 font-bold">{dialog.npc.name}</span><SpriteThumb index={dialog.npc.sprite} size={3}/><div className="flex-1"><p className="min-h-16 text-lg">{(dialog.npc.dialogue[dialog.line]??"").slice(0,dialog.shown)}</p><p className="mt-2 text-right text-xs text-muted-foreground">{dialog.line+1}/{dialog.npc.dialogue.length} ▸</p></div></Button></div>}
+    {!dialog&&!panel&&!fishing&&<div className="absolute bottom-20 right-3 grid grid-cols-3 gap-1 md:hidden"><span/><Button variant="pixel" className="h-11 w-11 touch-none" aria-label="Move up" {...dpad("up")}><ChevronUp/></Button><span/><Button variant="pixel" className="h-11 w-11 touch-none" aria-label="Move left" {...dpad("left")}><ChevronLeft/></Button><Button variant="pixel" className="h-11 w-11" aria-label="Interact" onClick={interact}>E</Button><Button variant="pixel" className="h-11 w-11 touch-none" aria-label="Move right" {...dpad("right")}><ChevronRight/></Button><span/><Button variant="pixel" className="h-11 w-11 touch-none" aria-label="Move down" {...dpad("down")}><ChevronDown/></Button></div>}
+    {panel==="avatar"&&<AvatarEditor initial={avatar} initialName={name} onClose={()=>setPanel(null)} onSave={async(a,n)=>{await onAvatarSave(a,n);setPanel(null);}}/>}
+    {panel&&panel!=="avatar"&&<div className="game-modal" role="dialog" aria-label={panel==="collection"?"Fish collection":panel==="invite"?"Invite partner":"Settings"}><section className="pixel-panel max-h-[85dvh] w-full max-w-lg overflow-y-auto p-5"><header className="flex items-center justify-between"><h2 className="text-2xl font-bold">{panel==="collection"?"Fish collection":panel==="invite"?"Together in town":"Settings"}</h2><Button variant="ghost" size="icon" aria-label="Close panel" onClick={()=>setPanel(null)}><X/></Button></header>
+    {panel==="collection"&&<><p className="mt-2 text-muted-foreground">{caught.length} catches · {new Set(caught.map(f=>f.id)).size}/{FISH.length} species</p><div className="mt-4 divide-y divide-border">{FISH.map(f=>{const catches=caught.filter(c=>c.id===f.id);return <div key={f.id} className="flex items-center gap-3 py-3"><span className="text-3xl opacity-80">{catches.length?"🐟":"❔"}</span><div className="flex-1"><h3 className="font-bold">{f.name}</h3><p className="text-sm capitalize text-muted-foreground">{f.rarity}{f.phases?` · ${f.phases.join(" / ")}`:""}</p></div><span>{catches.length?`${catches.length} · ${Math.max(...catches.map(c=>c.size))} cm`:"—"}</span></div>;})}</div></>}
+    {panel==="invite"&&<div className="mt-5"><p>{partner?`${partner} is playing with you.`:"Your partner can join with this invitation."}</p><p className="my-5 text-center text-3xl font-bold">{town.invite_code}</p><Button variant="pixel" className="w-full" onClick={()=>void navigator.clipboard.writeText(`${window.location.origin}/?invite=${town.invite_code}`).then(()=>notify("Invitation copied!"),()=>notify(`Invitation code: ${town.invite_code}`))}><Copy/>Copy invitation</Button></div>}
+    {panel==="settings"&&<div className="mt-5 space-y-4"><label className="flex items-center justify-between">Town radio<input type="checkbox" checked={music} onChange={ev=>setMusic(ev.target.checked)}/></label><label className="flex items-center justify-between">Location pointers<input type="checkbox" checked={pointers} onChange={ev=>{setPointers(ev.target.checked);if(engineRef.current)engineRef.current.showPointers=ev.target.checked;}}/></label><div className="border-t border-border pt-3">Level {town.level} · {LEVEL_UNLOCKS.filter(u=>u.level<=town.level).length} milestones</div><Button variant="pixel" disabled={saveBusy} onClick={()=>void manualSave()}><Save/>Save town</Button></div>}</section></div>}
+    {(loading||engineError)&&<div className="absolute inset-0 z-40 flex items-center justify-center bg-title text-xl">{engineError||"Opening town…"}</div>}
+  </main>;
 }
