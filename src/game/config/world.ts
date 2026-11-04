@@ -14,10 +14,10 @@ export interface SeatGroup {
 
 export const PROMPTS: Record<SeatKind, string> = { bench: "Sit", boat: "Hop on", fish: "Fish?" };
 
+/** Few benches, each sitting just beside a path edge (~3px gap), never on it. Checked against distToPaths. */
 const BENCH_POS: [number, number][] = [
-  [400, 300], [700, 300], [300, 430], [840, 420], [500, 565], [640, 565],
-  [140, 525], [150, 345], [512, 705], [812, 705], [270, 870], [470, 870],
-  [760, 870], [950, 870], [420, 640], [1000, 245],
+  [420, 295], [740, 295], [238, 430], [922, 430], [400, 577],
+  [760, 577], [500, 823], [780, 823], [165, 823], [700, 863],
 ];
 export const BENCHES: SeatGroup[] = BENCH_POS.map(([x, y], i) => ({
   id: `bench${i}`, kind: "bench", x, y: y + 6,
@@ -51,7 +51,7 @@ export const SEAT_GROUPS: SeatGroup[] = [...BENCHES, BOAT_GROUP, FISH_GROUP];
 export const LAMPS = {
   spacing: 80, // ~5 tiles
   minGap: 46,
-  radius: 74,
+  radius: 56,
   /** extra hand-placed lamps (pond shore, dock, pier) */
   extra: [[160, 885], [330, 890], [470, 893], [580, 884], [620, 884], [720, 890], [880, 890], [1040, 888], [204, 886], [262, 886], [610, 940], [590, 970]] as [number, number][],
 };

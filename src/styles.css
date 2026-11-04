@@ -123,3 +123,15 @@
 .fish-marker { position: absolute; top: 2px; bottom: 2px; width: 5px; background: var(--fish-marker); border: 1px solid var(--border); }
 @media(max-width:640px) { .editor-layout { grid-template-columns: 1fr; gap: 12px; } .editor-layout canvas { height: 140px; } .item-grid { grid-template-columns: repeat(3,minmax(0,1fr)); max-height: 210px; } .game-modal { padding: 8px; } }
 @media(prefers-reduced-motion:reduce) { .animate-float,.animate-eq { animation: none; } }
+
+.play-btn { display: inline-flex; align-items: center; gap: 14px; padding: 12px 44px 14px; font-size: 1.9rem; font-weight: 800; letter-spacing: .08em; color: #fff; cursor: pointer;
+  background: linear-gradient(180deg, #ffb6cf 0%, #f08fb3 100%); border: 4px solid var(--plum); border-radius: 999px;
+  box-shadow: 0 6px 0 0 var(--plum), 0 12px 22px rgba(80, 40, 110, .35), inset 0 3px 0 rgba(255, 255, 255, .55); text-shadow: 0 2px 0 rgba(120, 50, 90, .55);
+  transition: transform .12s ease, box-shadow .12s ease; animation: play-float 2.8s ease-in-out infinite; }
+.play-btn:hover { transform: translateY(-2px) scale(1.04); }
+.play-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 0 var(--plum), inset 0 3px 0 rgba(255, 255, 255, .45); animation: none; }
+.play-btn:focus-visible { outline: 4px solid var(--cream); outline-offset: 4px; }
+.play-btn-star { font-size: 1.1rem; color: #fff7c2; animation: play-twinkle 1.6s ease-in-out infinite; }
+.play-btn-star:last-child { animation-delay: .8s; }
+@keyframes play-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }
+@keyframes play-twinkle { 0%, 100% { opacity: .5; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.2); } }

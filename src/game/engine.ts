@@ -1,4 +1,4 @@
-import { BUILDING_ART, TREE_ART } from "./assets";
+import { BUILDING_ART } from "./assets";
 import { drawCharacter, type Dir } from "./character";
 import { BUILDINGS, GATE, PATHS, PLOTS, WORLD_H, WORLD_W, YARD, distToPaths, rng, type Building } from "./map";
 import { NPCS, type NpcDef } from "./npcs";
@@ -92,7 +92,7 @@ export class GameEngine {
 
   async start() {
     await preloadAvatars();
-    const srcs = [...Object.values(BUILDING_ART), ...TREE_ART, ...Object.values(SPRITES)];
+    const srcs = [...Object.values(BUILDING_ART), ...Object.values(SPRITES)];
     const loaded = await Promise.all(srcs.map(loadImg));
     srcs.forEach((s, i) => this.imgs.set(s, loaded[i]!));
     this.buildSolids();
@@ -197,6 +197,7 @@ export class GameEngine {
     if (distToPaths(x, y) < 10 + rad * 0.3) return true;
     if (y > shoreY(x) - 14 || (y > LANE_Y - 20 && y < LANE_Y + 26)) return true;
     if (this.nearBuilding(x, y, 14)) return true;
+    for (const b of BENCHES) if (Math.abs(b.x - x) < 26 && y > b.y - 30 && y < b.y + 14) return true;
     if (x > YARD.x - 16 && x < YARD.x + YARD.w + 16 && y > YARD.y - 10 && y < YARD.y + YARD.h + 24) return true;
     if (x > 1020 && y > 200 && y < 330) return true;
     for (const b of BUILDINGS) if (Math.hypot(b.door.x - x, b.door.y - y) < 30) return true;
@@ -212,22 +213,19 @@ export class GameEngine {
     const r = rng(SCATTER_COUNTS.seed);
     const total = SCENERY.reduce((s, d) => s + d.weight, 0);
     const pick = () => { let v = r() * total; for (const d of SCENERY) { v -= d.weight; if (v <= 0) return d; } return SCENERY[0]!; };
-    // legacy tree art still mixed in
-    const legacy = TREE_ART.map((src) => ({ src }));
     let glow = 0;
     const queue: SceneryDef[] = [...SCENERY];
     for (let i = 0; i < 6000 && this.scenery.length < SCATTER_COUNTS.total; i++) {
-      const useLegacy = !queue.length && r() < 0.25;
-      const def = queue.length ? queue[0]! : useLegacy ? null : pick();
-      const w = def ? def.w * (0.9 + r() * 0.2) : 34 + r() * 12;
+      const def = queue.length ? queue[0]! : pick();
+      const w = def.w * (0.9 + r() * 0.2);
       const x = 12 + r() * (WORLD_W - 24), y = 40 + r() * (SHORE_Y - 60);
       if (this.sceneryBlocked(x, y, w)) continue;
       if (queue.length) queue.shift();
-      const sprite = def ? SPRITES[def.sprite] : legacy[Math.floor(r() * legacy.length)]!.src;
+      const sprite = SPRITES[def.sprite];
       const p: Placed = { def, sprite, x, y, w, phase: r() * 6 };
       if (def?.kind === "bush" && glow < GLOW_BUSH_COUNT) { p.glow = GLOW_COLORS[glow % GLOW_COLORS.length]; glow++; }
       this.scenery.push(p);
-      const sol = def ? def.solid : { w: 8, h: 5 };
+      const sol = def.solid;
       if (sol) this.solids.push({ x: x - sol.w / 2, y: y - sol.h + 1, w: sol.w, h: sol.h });
     }
     for (const t of SPECIAL_TREES) this.scenery.push({ def: null, sprite: SPRITES[t.sprite], x: t.x, y: t.y, w: t.w, glow: t.glow, phase: 0, lanterns: t.lanterns });
@@ -629,14 +627,14 @@ export class GameEngine {
     for (const l of this.lamps) {
       if (l.on < 0.02 || !vis(l.x, l.y)) continue;
       const fl = 0.9 + Math.sin(this.t * 13 + l.ph) * 0.05 + (hash(Math.floor(this.t * 8), l.x) > 0.97 ? -0.25 : 0);
-      ctx.globalAlpha = l.on * fl * 0.55;
-      const R = LAMPS.radius * 0.8;
+      ctx.globalAlpha = l.on * fl * 0.16;
+      const R = LAMPS.radius * 0.7;
       ctx.drawImage(this.glow("#ffc890"), l.x - R, l.y - 20 - R * 0.8, R * 2, R * 1.6);
-      ctx.globalAlpha = l.on * fl;
-      ctx.drawImage(this.glow("#fff0c8"), l.x - 7, l.y - 32, 14, 14);
+      ctx.globalAlpha = l.on * fl * 0.4;
+      ctx.drawImage(this.glow("#fff0c8"), l.x - 5, l.y - 30, 10, 10);
       // reflection on water
       if (l.y > SHORE_Y - 40) {
-        ctx.globalAlpha = l.on * 0.35;
+        ctx.globalAlpha = l.on * 0.1;
         for (let k = 0; k < 6; k++) {
           const ry = shoreY(l.x) + 8 + k * 7, wob = Math.sin(this.t * 2 + k + l.ph) * 2;
           ctx.drawImage(this.glow("#ffd8a0"), l.x - 5 + wob, ry, 10, 4);
@@ -649,7 +647,7 @@ export class GameEngine {
         const pulse = 0.55 + Math.sin(this.t * 1.6 + s.phase) * 0.35;
         const big = !s.def;
         const R = big ? s.w * 0.85 : s.w * 0.9;
-        ctx.globalAlpha = night * pulse * (big ? 0.45 : 0.6);
+        ctx.globalAlpha = night * pulse * (big ? 0.2 : 0.26);
         const h = this.spriteH(s.sprite, s.w);
         ctx.drawImage(this.glow(s.glow), s.x - R, s.y - h * (big ? 0.62 : 0.45) - R * 0.7, R * 2, R * 1.4);
       }
@@ -732,12 +730,12 @@ export class GameEngine {
       for (const l of this.lamps) {
         if (l.on < 0.02) continue;
         if (l.x < this.cam.x - R || l.x > this.cam.x + vw + R || l.y < this.cam.y - R || l.y > this.cam.y + vh + R) continue;
-        g.globalAlpha = l.on * 0.8;
+        g.globalAlpha = l.on * 0.28;
         g.drawImage(hole, l.x - R, l.y - 14 - R * 0.8, R * 2, R * 1.6);
       }
-      g.globalAlpha = 0.5;
+      g.globalAlpha = 0.2;
       for (const s of this.scenery) if (s.glow && !s.def) g.drawImage(hole, s.x - 40, s.y - 60, 80, 70);
-      g.globalAlpha = 0.35;
+      g.globalAlpha = 0.15;
       const me = this.player; g.drawImage(hole, me.x - 24, me.y - 34, 48, 40);
       g.globalAlpha = 1;
     }
