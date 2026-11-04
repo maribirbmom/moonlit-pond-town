@@ -8,7 +8,7 @@ import { BENCHES, BOAT, BOAT_GROUP, DOCK, FISH_GROUP, LAMPS, LANE_Y, PIER, PROMP
 import { lightingAt } from "./config/time";
 
 interface Rect { x: number; y: number; w: number; h: number }
-interface Placed { def: SceneryDef | null; sprite: SpriteKey | string; x: number; y: number; w: number; glow?: string; phase: number; lanterns?: boolean }
+interface Placed { def: SceneryDef | null; sprite: SpriteKey | string; x: number; y: number; w: number; glow?: string | undefined; phase: number; lanterns?: boolean | undefined }
 interface Lamp { x: number; y: number; on: number; th: number; ph: number }
 export interface PlayerState { x: number; y: number; dir: Dir }
 export interface FishVis { x: number; y: number; phase: string; t: number }
