@@ -53,7 +53,7 @@ export const ITEM_ART = {
   "witch": art25.url
 };
 export type Category = "hair" | "tops" | "bottoms" | "hats" | "accessories" | "eyewear" | "moustache";
-export interface Item { id: string; category: Category; name: string; sprite: string | null; price: number; colorways: string[]; locked: boolean; shape?: string }
+export interface Item { id: string; category: Category; name: string; sprite: string | null; price: number; colorways: string[]; locked: boolean; shape?: string | undefined }
 export const SKIN_TONES = ["#fbe1cc","#f5cfad","#e5b48c","#cc936b","#b47a53","#925c3d","#70452f","#4c3027"];
 export const HAIR_COLORS = ["#24212b","#3b2723","#75503a","#943e36","#c86d35","#e4bf70","#f1e9cb","#919299","#efaac7","#b6a0d9","#8bcbb4","#89badc"];
 export const HAIR_NAMES = ["Black","Dark brown","Brown","Auburn","Ginger","Blonde","Platinum","Grey","Pastel pink","Lavender","Mint","Sky blue"];
