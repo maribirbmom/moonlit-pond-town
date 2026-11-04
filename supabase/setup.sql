@@ -144,3 +144,18 @@ INSERT INTO public.xp_events(session_id,user_id,source,amount) VALUES(_sid,auth.
 UPDATE public.sessions SET xp=xp+amount,level=public.level_for_xp(xp+amount),updated_at=now(),world_state=CASE WHEN key IS NULL THEN world_state ELSE jsonb_set(world_state,ARRAY[key],coalesce(world_state->key,'[]')||to_jsonb(split_part(_source,':',2)),true) END WHERE id=_sid RETURNING * INTO s;
 RETURN jsonb_build_object('awarded',true,'xp',s.xp,'level',s.level,'amount',amount); END $$;
 CREATE OR REPLACE FUNCTION public.record_catch(_sid uuid,_catch jsonb,_xp int) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ DECLARE reward int; r jsonb; BEGIN IF NOT public.is_member(_sid) THEN RAISE EXCEPTION 'not a member'; END IF; reward:=CASE _catch->>'id' WHEN 'minnow' THEN 5 WHEN 'bluegill' THEN 5 WHEN 'carp' THEN 5 WHEN 'perch' THEN 10 WHEN 'koi' THEN 10 WHEN 'duskeel' THEN 10 WHEN 'moonfish' THEN 25 WHEN 'goldkoi' THEN 25 ELSE NULL END; IF reward IS NULL THEN RAISE EXCEPTION 'unknown fish'; END IF; UPDATE public.sessions SET world_state=jsonb_set(world_state,'{fishCaught}',coalesce(world_state->'fishCaught','[]')||jsonb_build_array(_catch||jsonb_build_object('by',auth.uid(),'at',now())),true) WHERE id=_sid; r:=public.add_xp(_sid,'fish:'||(_catch->>'id'),reward,0); RETURN r; END $$;
+-- Wishing well notes: members of a town can read every wish in it and add their own.
+CREATE TABLE IF NOT EXISTS public.wishes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL REFERENCES public.sessions(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL DEFAULT auth.uid(),
+  author text NOT NULL DEFAULT '',
+  body text NOT NULL CHECK (char_length(body) BETWEEN 1 AND 200),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS wishes_session_idx ON public.wishes(session_id, created_at DESC);
+GRANT SELECT, INSERT ON public.wishes TO authenticated;
+GRANT ALL ON public.wishes TO service_role;
+ALTER TABLE public.wishes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "members read wishes" ON public.wishes FOR SELECT TO authenticated USING (public.is_member(session_id));
+CREATE POLICY "members add own wish" ON public.wishes FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid() AND public.is_member(session_id));

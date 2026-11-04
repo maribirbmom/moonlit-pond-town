@@ -8,10 +8,12 @@ import cafe from "@/assets/game/cafe.png";
 import cake from "@/assets/game/cake.png";
 import flower from "@/assets/game/flower.png";
 import gameroom from "@/assets/game/gameroom.png";
+import grasshouse from "@/assets/game/grasshouse.png";
 import home from "@/assets/game/home.png";
 import petdecor from "@/assets/game/petdecor.png";
 import pub from "@/assets/game/pub.png";
 import seedshop from "@/assets/game/seedshop.png";
+import well from "@/assets/game/well.png";
 import tree0 from "@/assets/game/tree0.png";
 import tree1 from "@/assets/game/tree1.png";
 import tree2 from "@/assets/game/tree2.png";
@@ -26,12 +28,15 @@ export const BUILDING_ART = {
   cafe: cafe,
   cake: cake,
   home: home,
+  grasshouse: grasshouse,
   petdecor: petdecor,
   gameroom: gameroom,
   busstop: busstop,
   seedshop: seedshop,
 } as const;
 export type BuildingArtKey = keyof typeof BUILDING_ART;
+
+export const WELL_ART = well;
 
 /** 0-2 autumn, 3-5 green */
 export const TREE_ART = [tree0, tree1, tree2, tree3, tree4, tree5];

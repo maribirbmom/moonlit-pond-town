@@ -6,7 +6,7 @@ export const TILE = 16;
 
 export type ShopId =
   | "salon" | "flower" | "bar" | "cafe" | "cake" | "garden" | "seedshop"
-  | "petdecor" | "gameroom" | "busstop" | "home";
+  | "petdecor" | "gameroom" | "busstop" | "home" | "grasshouse";
 
 export interface Building {
   id: ShopId;
@@ -21,6 +21,7 @@ export interface Building {
   enterable: boolean;
 }
 
+const GH_X = 1036, GH_Y = 580;
 export const BUILDINGS: Building[] = [
   // top row
   { id: "petdecor", name: "Pet Decor", art: "petdecor", x: 330, y: 212, w: 120, door: { x: 312, y: 214 }, depth: 50, enterable: true },
@@ -29,14 +30,15 @@ export const BUILDINGS: Building[] = [
   // left column
   { id: "salon", name: "Salon", art: "salon", x: 85, y: 300, w: 120, door: { x: 85, y: 302 }, depth: 46, enterable: true },
   { id: "flower", name: "Flower Shop", art: "flower", x: 85, y: 480, w: 86, door: { x: 72, y: 482 }, depth: 40, enterable: true },
-  { id: "bar", name: "The Pub Freesia", art: "bar", x: 105, y: 785, w: 165, door: { x: 98, y: 787 }, depth: 60, enterable: true },
+  { id: "bar", name: "Salu's Bar", art: "bar", x: 105, y: 785, w: 165, door: { x: 98, y: 787 }, depth: 60, enterable: true },
   // bottom row
   { id: "cafe", name: "Cafe", art: "cafe", x: 290, y: 780, w: 76, door: { x: 302, y: 782 }, depth: 40, enterable: true },
   { id: "cake", name: "Evening Cakery", art: "cake", x: 412, y: 785, w: 92, door: { x: 426, y: 787 }, depth: 54, enterable: true },
   { id: "garden", name: "Garden", art: null, x: 660, y: 790, w: 240, door: { x: 660, y: 640 }, depth: 0, enterable: false },
-  { id: "seedshop", name: "Seed Shop", art: "seedshop", x: 895, y: 780, w: 104, door: { x: 895, y: 782 }, depth: 44, enterable: true },
+  { id: "seedshop", name: "Groceries", art: "seedshop", x: 895, y: 780, w: 128, door: { x: 895, y: 782 }, depth: 44, enterable: true },
   // center
-  { id: "home", name: "Home", art: "home", x: 560, y: 470, w: 140, door: { x: 560, y: 472 }, depth: 54, enterable: false },
+  { id: "home", name: "Home", art: "home", x: 560, y: 470, w: 132, door: { x: 560, y: 472 }, depth: 50, enterable: false },
+  { id: "grasshouse", name: "Grass House", art: "grasshouse", x: GH_X, y: GH_Y, w: 112, door: { x: GH_X, y: GH_Y + 2 }, depth: 40, enterable: false },
 ];
 
 /** Garden soil plots (walkable, decorative) */
@@ -54,6 +56,7 @@ export const RING = { l: 200, r: 960, t: 262, b: 600 };
 export const PATHS: { pts: [number, number][]; r: number }[] = [
   { pts: [[RING.l, RING.t], [RING.r, RING.t], [RING.r, RING.b], [RING.l, RING.b], [RING.l, RING.t]], r: 20 },
   { pts: [[RING.r, 272], [1060, 272]], r: 16 },
+  { pts: [[RING.r, 592], [GH_X, 592]], r: 9 },
   // spurs to doors
   { pts: [[312, 214], [312, RING.t]], r: 12 },
   { pts: [[545, 214], [545, RING.t]], r: 12 },

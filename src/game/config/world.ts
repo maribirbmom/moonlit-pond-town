@@ -64,3 +64,6 @@ export const LAMPS = {
   /** shore promenade, hand-spaced; pairs flank the dock (x 592-608) and pier (x 212-254) */
   shore: [[110, 884], [204, 884], [262, 884], [410, 884], [574, 884], [626, 884], [790, 884], [940, 884], [1040, 884]] as [number, number][],
 };
+
+/** Wishing well on a grassy patch between the player's house and the middle of the map. */
+export const WELL = { x: 700, y: 552, w: 58 };

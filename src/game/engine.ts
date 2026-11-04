@@ -1,10 +1,10 @@
-import { BUILDING_ART } from "./assets";
+import { BUILDING_ART, WELL_ART } from "./assets";
 import { drawCharacter, type Dir } from "./character";
 import { BUILDINGS, GATE, PATHS, PLOTS, RING, WORLD_H, WORLD_W, YARD, distToPaths, rng, type Building } from "./map";
 import { NPCS, type NpcDef } from "./npcs";
 import { SPRITES, type SpriteKey } from "./config/sprites";
 import { FIREFLIES, GLOW_BUSH_COUNT, GLOW_COLORS, SCATTER_COUNTS, SCENERY, SPECIAL_TREES, type SceneryDef } from "./config/scenery";
-import { BENCHES, BOAT, BOAT_GROUP, DOCK, FISH_GROUP, LAMPS, LANE_Y, PIER, PROMPTS, SEAT_GROUPS, SHORE_Y, shoreY, type SeatGroup } from "./config/world";
+import { WELL, BENCHES, BOAT, BOAT_GROUP, DOCK, FISH_GROUP, LAMPS, LANE_Y, PIER, PROMPTS, SEAT_GROUPS, SHORE_Y, shoreY, type SeatGroup } from "./config/world";
 import { lightingAt } from "./config/time";
 import { drawAvatar, preloadAvatars } from "./avatar";
 import type { Avatar } from "./config/items";
@@ -18,6 +18,7 @@ export interface RemoteState { id: string; name: string; sprite: number; x: numb
 export type Nearby =
   | { kind: "npc"; npc: NpcDef }
   | { kind: "gate" }
+  | { kind: "well" }
   | { kind: "seat"; group: SeatGroup; prompt: string; full: boolean }
   | null;
 
@@ -74,6 +75,9 @@ export class GameEngine {
   fish: FishVis | null = null;
   remotes = new Map<string, RemoteState>();
   minutes = 480;
+  /** brief golden shimmer over the well after a wish (1 → 0) */
+  wishGlow = 0;
+  makeWish() { this.wishGlow = 1; }
   avatar: Avatar | null = null;
   get night() { return lightingAt(this.minutes).night; }
 
@@ -92,7 +96,7 @@ export class GameEngine {
 
   async start() {
     await preloadAvatars();
-    const srcs = [...Object.values(BUILDING_ART), ...Object.values(SPRITES)];
+    const srcs = [...Object.values(BUILDING_ART), ...Object.values(SPRITES), WELL_ART];
     const loaded = await Promise.all(srcs.map(loadImg));
     srcs.forEach((s, i) => this.imgs.set(s, loaded[i]!));
     this.buildSolids();
@@ -142,6 +146,7 @@ export class GameEngine {
     s.push({ x: GATE.x - 4, y: GATE.y, w: GATE.w + 4, h: GATE.h });
     for (const b of BENCHES) s.push({ x: b.x - 14, y: b.y - 12, w: 28, h: 6 });
     s.push({ x: 614, y: 496, w: 6, h: 4 }); // mailbox
+    s.push({ x: WELL.x - WELL.w * 0.32, y: WELL.y - 9, w: WELL.w * 0.64, h: 9 }); // wishing well
     for (const n of NPCS) { const p = this.npcPos(n); s.push({ x: p.x - 5, y: p.y - 4, w: 10, h: 5 }); }
     for (const t of SPECIAL_TREES) s.push({ x: t.x - 6, y: t.y - 5, w: 12, h: 6 });
     this.solids = s;
@@ -170,6 +175,7 @@ export class GameEngine {
       if (x > YARD.x - 4 && x < YARD.x + YARD.w + 4 && y > YARD.y - 4 && y < YARD.y + YARD.h + 4) return false;
       if (distToPaths(x, y) < 1) return false;
       for (const g of SEAT_GROUPS) if (Math.hypot(g.x - x, g.y - y) < 22) return false;
+      if (Math.hypot(WELL.x - x, WELL.y - y) < 30) return false;
       for (const n of NPCS) { const p = this.npcPos(n); if (Math.hypot(p.x - x, p.y - y) < 18) return false; }
       for (const l of lamps) if (Math.hypot(l.x - x, l.y - y) < 60) return false;
       return true;
@@ -203,6 +209,7 @@ export class GameEngine {
     if (x > 1020 && y > 200 && y < 330) return true;
     for (const b of BUILDINGS) if (Math.hypot(b.door.x - x, b.door.y - y) < 30) return true;
     for (const g of SEAT_GROUPS) if (Math.hypot(g.x - x, g.y - y) < 26) return true;
+    if (Math.hypot(WELL.x - x, WELL.y - y) < 62) return true;
     for (const l of this.lamps) if (Math.hypot(l.x - x, l.y - y) < 14) return true;
     for (const n of NPCS) { const p = this.npcPos(n); if (Math.hypot(p.x - x, p.y - y) < 30) return true; }
     for (const t of SPECIAL_TREES) if (Math.hypot(t.x - x, t.y - y) < 40) return true;
@@ -430,6 +437,7 @@ export class GameEngine {
 
   private update(dt: number) {
     this.t += dt;
+    if (this.wishGlow > 0) this.wishGlow = Math.max(0, this.wishGlow - dt * 0.5);
     let dx = 0, dy = 0;
     if (!this.paused && !this.seat) {
       const k = this.keys;
@@ -489,9 +497,10 @@ export class GameEngine {
         const dd = Math.hypot(g.x - this.player.x, g.y - this.player.y);
         if (dd < best) { best = dd; near = { kind: "seat", group: g, prompt: PROMPTS[g.kind], full: g.seats.every((_, i) => this.occupiedBy(`${g.id}:${i}`)) }; }
       }
+      if (Math.hypot(WELL.x - this.player.x, WELL.y + 8 - this.player.y) < 30) near = { kind: "well" };
       if (!near && this.player.x > 1030 && Math.abs(this.player.y - 280) < 50) near = { kind: "gate" };
     }
-    const key = (n: Nearby) => (n ? (n.kind === "npc" ? n.npc.id : n.kind === "seat" ? n.group.id + n.full : "gate") : "");
+    const key = (n: Nearby) => (n ? (n.kind === "npc" ? n.npc.id : n.kind === "seat" ? n.group.id + n.full : n.kind) : "");
     if (key(near) !== key(this.nearby)) { this.nearby = near; this.opts.onNearby(near); }
   }
 
@@ -594,11 +603,20 @@ export class GameEngine {
         ctx.imageSmoothingEnabled = true; ctx.drawImage(img, BOAT.x - BOAT.w / 2, BOAT.y - h + 6 + boatBob, BOAT.w, h); ctx.imageSmoothingEnabled = false;
       } });
     }
+    const wellImg = this.imgs.get(WELL_ART);
+    if (wellImg?.width && vis(WELL.x, WELL.y)) {
+      list.push({ y: WELL.y - 4, draw: () => {
+        const h = this.spriteH(WELL_ART, WELL.w);
+        ctx.fillStyle = "rgba(40,50,40,0.18)"; ctx.beginPath(); ctx.ellipse(WELL.x, WELL.y - 1, WELL.w * 0.4, 4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.imageSmoothingEnabled = true; ctx.drawImage(wellImg, WELL.x - WELL.w / 2, WELL.y - h + 2, WELL.w, h); ctx.imageSmoothingEnabled = false;
+        if (this.wishGlow > 0) { ctx.fillStyle = `rgba(255,236,160,${Math.min(0.5, this.wishGlow)})`; ctx.beginPath(); ctx.arc(WELL.x, WELL.y - h * 0.35, 16 + (1 - this.wishGlow) * 10, 0, Math.PI * 2); ctx.fill(); }
+      } });
+    }
     for (const l of this.lamps) if (vis(l.x, l.y)) list.push({ y: l.y, draw: () => this.drawLamp(l) });
     this.pushFence(list);
     list.push({ y: 500, draw: () => this.drawMailbox(617, 500) });
     list.push({ y: GATE.y + GATE.h, draw: () => this.drawGate() });
-    for (const b of BUILDINGS) if (b.id !== "home") list.push({ y: b.door.y + 18, draw: () => this.drawSign(b) });
+    for (const b of BUILDINGS) if (b.id !== "home" && b.id !== "grasshouse") list.push({ y: b.door.y + 18, draw: () => this.drawSign(b) });
     NPCS.forEach((n, i) => {
       const p = this.npcPos(n);
       if (!vis(p.x, p.y)) return;
@@ -699,9 +717,10 @@ export class GameEngine {
       if (this.nearby?.kind === "npc" && this.nearby.npc.id === n.id) this.bubble(p.x + 10, p.y - 36, "E");
     }
     if (this.nearby?.kind === "seat") this.bubble(this.nearby.group.x, this.nearby.group.y - 30, "E");
+    if (this.nearby?.kind === "well") this.bubble(WELL.x, WELL.y - this.spriteH(WELL_ART, WELL.w) - 4, "E");
     if (this.showPointers) {
       for (const b of BUILDINGS) {
-        if (b.id === "home") continue;
+        if (b.id === "home" || b.id === "grasshouse") continue;
         const yy = (b.id === "garden" ? b.door.y : b.door.y - 36) + Math.sin(this.t * 3 + b.x) * 2;
         this.pointer(b.door.x, yy);
       }

@@ -73,6 +73,10 @@ export const sfx = {
   catch() { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, 0.22, { type: "triangle", vol: 0.055, at: i * 0.075 })); },
   /** it got away */
   miss() { tone(330, 0.2, { type: "sine", to: 247, vol: 0.05 }); tone(247, 0.3, { type: "sine", to: 174, vol: 0.05, at: 0.16 }); },
+  /** coin flicks into the well */
+  coin() { tone(1568, 0.09, { type: "triangle", vol: 0.05 }); tone(2093, 0.16, { type: "triangle", vol: 0.04, at: 0.08 }); },
+  /** coin plops in the water, note drifts down, a soft chime */
+  wish() { tone(700, 0.16, { to: 260, vol: 0.05 }); noise(0.2, { from: 2000, to: 500, vol: 0.03, type: "lowpass", at: 0.04 }); [659.25, 880, 1318.5].forEach((f, i) => tone(f, 0.5, { type: "sine", vol: 0.03, at: 0.28 + i * 0.12 })); },
   /** sit down / stand up */
   sit() { tone(300, 0.1, { type: "triangle", to: 220, vol: 0.035 }); },
   stand() { tone(220, 0.1, { type: "triangle", to: 320, vol: 0.035 }); },

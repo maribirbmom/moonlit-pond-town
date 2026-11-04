@@ -144,6 +144,20 @@ export type Database = {
         }
         Relationships: []
       }
+      wishes: {
+        Row: { author: string; body: string; created_at: string; id: string; session_id: string; user_id: string }
+        Insert: { author?: string; body: string; created_at?: string; id?: string; session_id: string; user_id?: string }
+        Update: { author?: string; body?: string; created_at?: string; id?: string; session_id?: string; user_id?: string }
+        Relationships: [
+          {
+            foreignKeyName: "wishes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       xp_events: {
         Row: {
           amount: number
