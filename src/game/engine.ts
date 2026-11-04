@@ -1,6 +1,6 @@
 import { BUILDING_ART } from "./assets";
 import { drawCharacter, type Dir } from "./character";
-import { BUILDINGS, GATE, PATHS, PLOTS, WORLD_H, WORLD_W, YARD, distToPaths, rng, type Building } from "./map";
+import { BUILDINGS, GATE, PATHS, PLOTS, RING, WORLD_H, WORLD_W, YARD, distToPaths, rng, type Building } from "./map";
 import { NPCS, type NpcDef } from "./npcs";
 import { SPRITES, type SpriteKey } from "./config/sprites";
 import { FIREFLIES, GLOW_BUSH_COUNT, GLOW_COLORS, SCATTER_COUNTS, SCENERY, SPECIAL_TREES, type SceneryDef } from "./config/scenery";
@@ -165,32 +165,33 @@ export class GameEngine {
     const lamps: { x: number; y: number }[] = [];
     const ok = (x: number, y: number) => {
       if (x < 8 || x > WORLD_W - 8 || y < 30) return false;
-      if (y > shoreY(x) - 6 && !inRect(x, y, DOCK) && !inRect(x, y, PIER)) return false;
+      if (y > shoreY(x) - 6) return false;
       if (this.nearBuilding(x, y, 2)) return false;
       if (x > YARD.x - 4 && x < YARD.x + YARD.w + 4 && y > YARD.y - 4 && y < YARD.y + YARD.h + 4) return false;
       if (distToPaths(x, y) < 1) return false;
       for (const g of SEAT_GROUPS) if (Math.hypot(g.x - x, g.y - y) < 22) return false;
       for (const n of NPCS) { const p = this.npcPos(n); if (Math.hypot(p.x - x, p.y - y) < 18) return false; }
-      for (const l of lamps) if (Math.hypot(l.x - x, l.y - y) < LAMPS.minGap) return false;
+      for (const l of lamps) if (Math.hypot(l.x - x, l.y - y) < 60) return false;
       return true;
     };
-    for (const [x, y] of LAMPS.extra) lamps.push({ x, y });
-    let side = 1;
-    for (const p of PATHS) for (let i = 0; i < p.pts.length - 1; i++) {
-      const [ax, ay] = p.pts[i]!, [bx, by] = p.pts[i + 1]!;
-      const len = Math.hypot(bx - ax, by - ay);
-      const nx = -(by - ay) / len, ny = (bx - ax) / len;
-      for (let d = 20; d < len; d += LAMPS.spacing) {
-        side = -side;
-        const cx = ax + ((bx - ax) * d) / len, cy = ay + ((by - ay) * d) / len;
-        for (const sd of [side, -side]) {
-          const x = Math.round(cx + nx * sd * (p.r + 7)), y = Math.round(cy + ny * sd * (p.r + 7));
-          if (ok(x, y)) { lamps.push({ x, y }); break; }
-        }
+    const row = (x0: number, y0: number, x1: number, y1: number) => {
+      const len = Math.hypot(x1 - x0, y1 - y0);
+      const n = Math.max(1, Math.round(len / LAMPS.spacing));
+      for (let i = 0; i <= n; i++) {
+        const x = Math.round(x0 + ((x1 - x0) * i) / n), y = Math.round(y0 + ((y1 - y0) * i) / n);
+        if (ok(x, y)) lamps.push({ x, y });
       }
-    }
+    };
+    // inside edge of the ring road, then the north side of the south lane
+    const i = LAMPS.inset;
+    row(RING.l + i, RING.t + i, RING.r - i, RING.t + i);
+    row(RING.l + i, RING.b - i, RING.r - i, RING.b - i);
+    row(RING.l + i, RING.t + i, RING.l + i, RING.b - i);
+    row(RING.r - i, RING.t + i, RING.r - i, RING.b - i);
+    row(60, LANE_Y - 19, 1040, LANE_Y - 19);
+    for (const [x, y] of LAMPS.shore) lamps.push({ x, y });
     this.lamps = lamps.map((l) => ({ ...l, on: 0, th: 0.12 + hash(l.x, l.y) * 0.3, ph: hash(l.y, l.x) * 10 }));
-    for (const l of this.lamps) if (!inRect(l.x, l.y, DOCK)) this.solids.push({ x: l.x - 3, y: l.y - 3, w: 6, h: 4 });
+    for (const l of this.lamps) this.solids.push({ x: l.x - 3, y: l.y - 3, w: 6, h: 4 });
   }
 
   private sceneryBlocked(x: number, y: number, rad: number) {
@@ -567,10 +568,21 @@ export class GameEngine {
     }
     // pier chairs & boat
     if (vis(PIER.x, PIER.y)) {
-      for (const [i, s] of FISH_GROUP.seats.entries()) {
-        const k = i === 0 ? SPRITES.cafe_1 : SPRITES.cafe_2;
-        const img = this.imgs.get(k);
-        if (img?.width) list.push({ y: s.y - 2, draw: () => { const h = this.spriteH(k, 11); ctx.imageSmoothingEnabled = true; ctx.drawImage(img, s.x - 5.5, s.y - h + 2, 11, h); ctx.imageSmoothingEnabled = false; } });
+      for (const s of FISH_GROUP.seats) {
+        // front-facing chair: backrest behind the sitter, seat edge and front legs in front
+        list.push({ y: s.y - 2, draw: () => {
+          ctx.fillStyle = "rgba(40,30,70,0.22)"; ctx.fillRect(s.x - 8, s.y + 1, 16, 2);
+          ctx.fillStyle = "#5a3a26"; ctx.fillRect(s.x - 9, s.y - 25, 18, 20);
+          ctx.fillStyle = "#8a5a3a"; ctx.fillRect(s.x - 8, s.y - 24, 16, 18);
+          ctx.fillStyle = "#a8744c"; ctx.fillRect(s.x - 8, s.y - 24, 16, 2);
+          ctx.fillStyle = "#6e4529"; ctx.fillRect(s.x - 5, s.y - 20, 1, 12); ctx.fillRect(s.x, s.y - 20, 1, 12); ctx.fillRect(s.x + 5, s.y - 20, 1, 12);
+        } });
+        list.push({ y: s.y + 3, draw: () => {
+          ctx.fillStyle = "#5a3a26"; ctx.fillRect(s.x - 9, s.y - 5, 18, 5);
+          ctx.fillStyle = "#b27c54"; ctx.fillRect(s.x - 8, s.y - 5, 16, 3);
+          ctx.fillStyle = "#8a5a3a"; ctx.fillRect(s.x - 8, s.y - 2, 16, 2);
+          ctx.fillStyle = "#5a3a26"; ctx.fillRect(s.x - 8, s.y, 2, 3); ctx.fillRect(s.x + 6, s.y, 2, 3);
+        } });
       }
     }
     const boatBob = Math.sin(this.t * 1.6) * 1.2;

@@ -18,6 +18,8 @@ export class FishingSim {
   markerV = 0;
   zone = 0.4;
   zoneV = 0;
+  private zoneTarget = 0.4;
+  private zoneWait = 0;
   progress = 0.35;
   fish: FishDef | null = null;
   result: Catch | null = null;
@@ -30,7 +32,7 @@ export class FishingSim {
       this.phase = "charging"; this.power = 0; this.dirUp = true; this.result = null;
     } else if (this.phase === "bite") {
       this.fish = rollFish(getPhase(), this.rand);
-      this.phase = "reeling"; this.marker = 0.3; this.markerV = 0; this.zone = 0.35; this.progress = 0.35;
+      this.phase = "reeling"; this.marker = 0.3; this.markerV = 0; this.zone = 0.35; this.zoneTarget = 0.35; this.zoneWait = 1; this.progress = 0.4;
     } else if (this.phase === "waiting") {
       this.phase = "escaped"; this.timer = 0; // pulled too early
     }
@@ -65,14 +67,21 @@ export class FishingSim {
         break;
       case "reeling": {
         const diff = this.fish?.difficulty ?? 0.3;
+        // frame-rate independent, damped motion: hold to rise, release to sink
         this.markerV += (holding ? F.markerLift : -F.markerGravity) * dt;
-        this.markerV *= 0.9;
-        this.marker = Math.max(0, Math.min(1, this.marker + this.markerV * dt));
-        if (this.marker === 0 || this.marker === 1) this.markerV = 0;
-        if (this.rand() < dt * (1 + diff * 3)) this.zoneV = (this.rand() - 0.5) * (0.6 + diff * 1.8);
-        this.zone = Math.max(0, Math.min(1 - F.zoneSize, this.zone + this.zoneV * dt));
+        this.markerV *= Math.exp(-5 * dt);
+        this.marker += this.markerV * dt;
+        if (this.marker <= 0) { this.marker = 0; this.markerV = Math.max(0, this.markerV * -0.3); }
+        if (this.marker >= 1) { this.marker = 1; this.markerV = Math.min(0, this.markerV * -0.3); }
+        // the fish drifts toward a new spot every so often instead of jittering
+        this.zoneWait -= dt;
+        if (this.zoneWait <= 0) {
+          this.zoneWait = 1.6 - diff * 0.8 + this.rand() * 1.2;
+          this.zoneTarget = this.rand() * (1 - F.zoneSize);
+        }
+        this.zone += (this.zoneTarget - this.zone) * Math.min(1, dt * (0.9 + diff * 1.4));
         const inZone = this.marker >= this.zone && this.marker <= this.zone + F.zoneSize;
-        this.progress += (inZone ? F.fillRate : -F.drainRate * (0.7 + diff)) * dt;
+        this.progress += (inZone ? F.fillRate : -F.drainRate * (0.6 + diff * 0.6)) * dt;
         if (this.progress >= 1) {
           const f = this.fish!;
           const size = Math.round((f.size[0] + this.rand() * (f.size[1] - f.size[0])) * 10) / 10;

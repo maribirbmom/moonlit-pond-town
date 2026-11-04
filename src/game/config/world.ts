@@ -50,10 +50,17 @@ export const FISH_GROUP: SeatGroup = {
 
 export const SEAT_GROUPS: SeatGroup[] = [...BENCHES, BOAT_GROUP, FISH_GROUP];
 
+/**
+ * Street lamps are placed on purpose, never scattered: evenly spaced rows along the inside of the
+ * main ring road and the south lane, plus a matching row on the shore promenade with a pair
+ * flanking the dock and the pier. None on the boat or the water.
+ */
 export const LAMPS = {
-  spacing: 80, // ~5 tiles
-  minGap: 46,
   radius: 56,
-  /** extra hand-placed lamps (pond shore, dock, pier) */
-  extra: [[160, 885], [330, 890], [470, 893], [580, 884], [620, 884], [720, 890], [880, 890], [1040, 888], [204, 886], [262, 886], [610, 940], [590, 970]] as [number, number][],
+  /** distance from a road's centre line to its lamp row */
+  inset: 27,
+  /** target spacing along a straight run */
+  spacing: 150,
+  /** shore promenade, hand-spaced; pairs flank the dock (x 592-608) and pier (x 212-254) */
+  shore: [[110, 884], [204, 884], [262, 884], [410, 884], [574, 884], [626, 884], [790, 884], [940, 884], [1040, 884]] as [number, number][],
 };

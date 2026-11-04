@@ -50,7 +50,7 @@ export const YARD = { x: 470, y: 340, w: 180, h: 170, gap: 40 };
 
 export const GATE = { x: 1068, y: 236, w: 32, h: 70 };
 
-const RING = { l: 200, r: 960, t: 262, b: 600 };
+export const RING = { l: 200, r: 960, t: 262, b: 600 };
 export const PATHS: { pts: [number, number][]; r: number }[] = [
   { pts: [[RING.l, RING.t], [RING.r, RING.t], [RING.r, RING.b], [RING.l, RING.b], [RING.l, RING.t]], r: 20 },
   { pts: [[RING.r, 272], [1060, 272]], r: 16 },

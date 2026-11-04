@@ -44,9 +44,9 @@ export function rollFish(phase: Phase, rand: () => number = Math.random) {
 
 export const FISHING = {
   waitMin: 3, waitMax: 10,
-  biteWindow: 1.5,
+  biteWindow: 2,
   castMin: 22, castMax: 110,
-  chargeSpeed: 1.1,
+  chargeSpeed: 0.85,
   /** reel minigame */
-  zoneSize: 0.26, markerGravity: 1.6, markerLift: 3.2, fillRate: 0.38, drainRate: 0.28,
+  zoneSize: 0.3, markerGravity: 2.2, markerLift: 4.4, fillRate: 0.42, drainRate: 0.2,
 } as const;
