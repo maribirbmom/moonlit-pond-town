@@ -160,7 +160,7 @@ export class GameEngine {
   private nearBuilding(x: number, y: number, pad: number) {
     for (const b of BUILDINGS) {
       const { w, h } = this.bSize(b);
-      if (b.id === "garden") { if (x > 520 && x < 810 && y > 630 && y < 790) return true; continue; }
+      if (b.id === "garden") { if (x > 520 && x < 745 && y > 630 && y < 790) return true; continue; }
       if (x > b.x - w / 2 - pad && x < b.x + w / 2 + pad && y > b.y - h * 0.65 && y < b.y + pad + 6) return true;
     }
     return false;
@@ -333,7 +333,7 @@ export class GameEngine {
     g.putImageData(img, 0, 0);
     // garden ground
     g.fillStyle = "#c9b48e";
-    g.fillRect(534, 642, 256, 118);
+    g.fillRect(534, 642, 198, 118);
     for (const p of PLOTS) {
       g.fillStyle = "#8a6042"; g.fillRect(p.x - 1, p.y - 1, p.w + 2, p.h + 3);
       g.fillStyle = "#6e4636"; g.fillRect(p.x, p.y, p.w, p.h);

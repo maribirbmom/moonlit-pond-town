@@ -21,11 +21,11 @@ export interface Building {
   enterable: boolean;
 }
 
-const GH_X = 1036, GH_Y = 580;
+const GH_X = 792, GH_Y = 772;
 export const BUILDINGS: Building[] = [
   // top row
   { id: "petdecor", name: "Pet Decor", art: "petdecor", x: 330, y: 212, w: 120, door: { x: 312, y: 214 }, depth: 50, enterable: true },
-  { id: "gameroom", name: "Game Room", art: "gameroom", x: 540, y: 212, w: 120, door: { x: 545, y: 214 }, depth: 50, enterable: true },
+  { id: "seedshop", name: "Groceries", art: "seedshop", x: 540, y: 212, w: 128, door: { x: 545, y: 214 }, depth: 44, enterable: true },
   { id: "busstop", name: "Bus Stop", art: "busstop", x: 900, y: 212, w: 105, door: { x: 895, y: 214 }, depth: 34, enterable: false },
   // left column
   { id: "salon", name: "Salon", art: "salon", x: 85, y: 300, w: 120, door: { x: 85, y: 302 }, depth: 46, enterable: true },
@@ -35,16 +35,16 @@ export const BUILDINGS: Building[] = [
   { id: "cafe", name: "Cafe", art: "cafe", x: 290, y: 780, w: 76, door: { x: 302, y: 782 }, depth: 40, enterable: true },
   { id: "cake", name: "Evening Cakery", art: "cake", x: 412, y: 785, w: 92, door: { x: 426, y: 787 }, depth: 54, enterable: true },
   { id: "garden", name: "Garden", art: null, x: 660, y: 790, w: 240, door: { x: 660, y: 640 }, depth: 0, enterable: false },
-  { id: "seedshop", name: "Groceries", art: "seedshop", x: 895, y: 780, w: 128, door: { x: 895, y: 782 }, depth: 44, enterable: true },
+  { id: "gameroom", name: "Arcade", art: "gameroom", x: 895, y: 780, w: 100, door: { x: 895, y: 782 }, depth: 46, enterable: true },
   // center
   { id: "home", name: "Home", art: "home", x: 560, y: 470, w: 132, door: { x: 560, y: 472 }, depth: 50, enterable: false },
-  { id: "grasshouse", name: "Grass House", art: "grasshouse", x: GH_X, y: GH_Y, w: 112, door: { x: GH_X, y: GH_Y + 2 }, depth: 40, enterable: false },
+  { id: "grasshouse", name: "Grass House", art: "grasshouse", x: GH_X, y: GH_Y, w: 96, door: { x: GH_X, y: GH_Y + 2 }, depth: 36, enterable: false },
 ];
 
 /** Garden soil plots (walkable, decorative) */
 export const PLOTS = [
-  { x: 548, y: 655, w: 52, h: 38 }, { x: 612, y: 655, w: 52, h: 38 }, { x: 676, y: 655, w: 52, h: 38 }, { x: 740, y: 655, w: 40, h: 38 },
-  { x: 548, y: 710, w: 52, h: 38 }, { x: 612, y: 710, w: 52, h: 38 }, { x: 676, y: 710, w: 52, h: 38 }, { x: 740, y: 710, w: 40, h: 38 },
+  { x: 548, y: 655, w: 52, h: 38 }, { x: 612, y: 655, w: 52, h: 38 }, { x: 676, y: 655, w: 52, h: 38 },
+  { x: 548, y: 710, w: 52, h: 38 }, { x: 612, y: 710, w: 52, h: 38 }, { x: 676, y: 710, w: 52, h: 38 },
 ];
 
 /** Home yard fence: rect with a gap at the bottom center */
@@ -56,18 +56,16 @@ export const RING = { l: 200, r: 960, t: 262, b: 600 };
 export const PATHS: { pts: [number, number][]; r: number }[] = [
   { pts: [[RING.l, RING.t], [RING.r, RING.t], [RING.r, RING.b], [RING.l, RING.b], [RING.l, RING.t]], r: 20 },
   { pts: [[RING.r, 272], [1060, 272]], r: 16 },
-  { pts: [[RING.r, 592], [GH_X, 592]], r: 9 },
   // spurs to doors
   { pts: [[312, 214], [312, RING.t]], r: 12 },
   { pts: [[545, 214], [545, RING.t]], r: 12 },
   { pts: [[895, 214], [895, RING.t]], r: 13 },
   { pts: [[85, 310], [140, 312], [RING.l, 300]], r: 12 },
   { pts: [[72, 490], [140, 488], [RING.l, 480]], r: 12 },
-  { pts: [[RING.l, RING.b], [150, 680], [98, 795]], r: 13 },
-  { pts: [[302, 790], [302, RING.b]], r: 12 },
-  { pts: [[426, 795], [426, RING.b]], r: 12 },
+  // shops on the south row are reached from the lane in front of them; these roads run beside the buildings, not behind them
+  { pts: [[RING.l, RING.b], [RING.l, 838]], r: 12 },
   { pts: [[660, 640], [660, RING.b]], r: 14 },
-  { pts: [[895, 790], [895, RING.b]], r: 13 },
+  { pts: [[RING.r, RING.b], [985, RING.b + 30], [985, 838]], r: 12 },
   { pts: [[560, 512], [560, 480]], r: 10 },
   { pts: [[560, 512], [560, RING.b]], r: 11 },
   // south lane + shore access (gap between cafe and cake leads down to the pond)
@@ -77,6 +75,7 @@ export const PATHS: { pts: [number, number][]; r: number }[] = [
   { pts: [[302, 790], [302, 838]], r: 9 },
   { pts: [[426, 795], [426, 838]], r: 9 },
   { pts: [[895, 790], [895, 838]], r: 10 },
+  { pts: [[GH_X, GH_Y + 4], [GH_X, 838]], r: 8 },
   { pts: [[600, 838], [600, 884]], r: 10 },
   { pts: [[233, 838], [233, 886]], r: 10 },
 ];
