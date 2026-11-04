@@ -33,7 +33,7 @@ export const BUILDINGS: Building[] = [
   { id: "bar", name: "Salu's Bar", art: "bar", x: 105, y: 785, w: 165, door: { x: 98, y: 787 }, depth: 60, enterable: true },
   // bottom row
   { id: "cafe", name: "Cafe", art: "cafe", x: 286, y: 780, w: 100, door: { x: 262, y: 782 }, depth: 36, enterable: true },
-  { id: "cake", name: "Evening Cakery", art: "cake", x: 412, y: 785, w: 92, door: { x: 426, y: 787 }, depth: 54, enterable: true },
+  { id: "cake", name: "Evening Cakery", art: "cake", x: 412, y: 785, w: 72, door: { x: 431, y: 787 }, depth: 48, enterable: true },
   { id: "garden", name: "Garden", art: null, x: 660, y: 790, w: 240, door: { x: 660, y: 640 }, depth: 0, enterable: false },
   { id: "gameroom", name: "Arcade", art: "gameroom", x: 895, y: 780, w: 100, door: { x: 895, y: 782 }, depth: 46, enterable: true },
   // center
@@ -68,12 +68,15 @@ export const PATHS: { pts: [number, number][]; r: number }[] = [
   { pts: [[RING.r, RING.b], [985, RING.b + 30], [985, 838]], r: 12 },
   { pts: [[560, 512], [560, 480]], r: 10 },
   { pts: [[560, 512], [560, RING.b]], r: 11 },
+  // little plaza with the wishing well, reached from the road below the house
+  { pts: [[560, 540], [664, 536]], r: 9 },
+  { pts: [[700, 532], [700, 533]], r: 36 },
   // south lane + shore access (gap between cafe and cake leads down to the pond)
   { pts: [[40, 838], [1060, 838]], r: 12 },
   { pts: [[347, RING.b], [347, 838]], r: 10 },
   { pts: [[98, 795], [98, 838]], r: 10 },
   { pts: [[262, 790], [262, 838]], r: 9 },
-  { pts: [[426, 795], [426, 838]], r: 9 },
+  { pts: [[431, 795], [431, 838]], r: 9 },
   { pts: [[895, 790], [895, 838]], r: 10 },
   { pts: [[GH_X, GH_Y + 4], [GH_X, 838]], r: 8 },
   { pts: [[600, 838], [600, 884]], r: 10 },

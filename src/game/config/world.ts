@@ -16,8 +16,14 @@ export const PROMPTS: Record<SeatKind, string> = { bench: "Sit", boat: "Hop on",
 
 /** Few benches, each sitting just beside a path edge (~3px gap), never on it. Checked against distToPaths. */
 const BENCH_POS: [number, number][] = [
-  [420, 295], [740, 295], [238, 430], [922, 430], [400, 577],
-  [760, 577], [500, 823], [780, 823], [165, 823], [700, 863],
+  // top of the ring road, mirrored around the middle
+  [420, 295], [740, 295],
+  // left / right sides of the ring road
+  [238, 430], [922, 430],
+  // flanking the road that leads from the house down to the plaza
+  [528, 564], [592, 564],
+  // pond lane, mirrored
+  [470, 823], [690, 823],
 ];
 export const BENCHES: SeatGroup[] = BENCH_POS.map(([x, y], i) => ({
   id: `bench${i}`, kind: "bench", x, y: y + 6,
@@ -66,4 +72,17 @@ export const LAMPS = {
 };
 
 /** Wishing well on a grassy patch between the player's house and the middle of the map. */
-export const WELL = { x: 700, y: 552, w: 58 };
+export const WELL = { x: 700, y: 546, w: 70 };
+
+/**
+ * Trees are planted on purpose: a tree line around the edge of the map and a few groves on open grass.
+ * The middle of town stays open so roads, plaza and shops read clearly.
+ */
+export const GROVES: [number, number, number][] = [
+  [330, 450, 62], [830, 420, 70], [125, 630, 58], [1010, 440, 60], [1020, 720, 55], [740, 700, 40],
+];
+export function treeAllowed(x: number, y: number) {
+  if (x < 62 || x > 1040 || y < 70) return true;
+  for (const [gx, gy, r] of GROVES) if (Math.hypot(gx - x, gy - y) < r) return true;
+  return false;
+}

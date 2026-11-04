@@ -4,7 +4,7 @@ import { BUILDINGS, GATE, PATHS, PLOTS, RING, WORLD_H, WORLD_W, YARD, distToPath
 import { NPCS, type NpcDef } from "./npcs";
 import { SPRITES, type SpriteKey } from "./config/sprites";
 import { FIREFLIES, GLOW_BUSH_COUNT, GLOW_COLORS, SCATTER_COUNTS, SCENERY, SPECIAL_TREES, type SceneryDef } from "./config/scenery";
-import { WELL, BENCHES, BOAT, BOAT_GROUP, DOCK, FISH_GROUP, LAMPS, LANE_Y, PIER, PROMPTS, SEAT_GROUPS, SHORE_Y, shoreY, type SeatGroup } from "./config/world";
+import { WELL, treeAllowed, BENCHES, BOAT, BOAT_GROUP, DOCK, FISH_GROUP, LAMPS, LANE_Y, PIER, PROMPTS, SEAT_GROUPS, SHORE_Y, shoreY, type SeatGroup } from "./config/world";
 import { lightingAt } from "./config/time";
 import { drawAvatar, preloadAvatars } from "./avatar";
 import type { Avatar } from "./config/items";
@@ -227,6 +227,7 @@ export class GameEngine {
       const def = queue.length ? queue[0]! : pick();
       const w = def.w * (0.9 + r() * 0.2);
       const x = 12 + r() * (WORLD_W - 24), y = 40 + r() * (SHORE_Y - 60);
+      if (def.kind === "tree" && !treeAllowed(x, y)) continue;
       if (this.sceneryBlocked(x, y, w)) continue;
       if (queue.length) queue.shift();
       const sprite = SPRITES[def.sprite];
