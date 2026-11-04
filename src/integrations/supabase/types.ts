@@ -14,20 +14,52 @@ export type Database = {
   }
   public: {
     Tables: {
+      player_live: {
+        Row: {
+          session_id: string
+          state: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          session_id: string
+          state?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          session_id?: string
+          state?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_live_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
+          avatar: Json | null
           avatar_sprite_index: number | null
           created_at: string
           display_name: string | null
           id: string
         }
         Insert: {
+          avatar?: Json | null
           avatar_sprite_index?: number | null
           created_at?: string
           display_name?: string | null
           id: string
         }
         Update: {
+          avatar?: Json | null
           avatar_sprite_index?: number | null
           created_at?: string
           display_name?: string | null
