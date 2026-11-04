@@ -717,7 +717,7 @@ def home():
 
 
 if __name__ == "__main__":
-    # Only the buildings without supplied art are generated; pub, bakery, flower shop, groceries,
+    # Only the buildings without supplied art are generated; pub, bakery, flower shop, cafe, groceries,
     # home, grass house and arcade use art from the artist and must not be overwritten.
-    pet_decor(); bus_stop(); cafe(); cakery()
+    pet_decor(); bus_stop(); cakery()
     print("ok")
